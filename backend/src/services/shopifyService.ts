@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { NotificationService } from './notificationService';
 
 let cachedToken: string | null = null;
 let tokenExpiry: number | null = null;
@@ -116,7 +117,17 @@ export class ShopifyService {
       method: 'POST',
       data: { order: orderData }
     });
-    return data.order;
+    
+    // Add notification
+    const order = data.order;
+    await NotificationService.addNotification({
+      type: 'order',
+      title: 'New Order Received',
+      message: `${order.customer?.first_name || 'A customer'} just placed an order for ${order.currency} ${order.total_price}.`,
+      time: 'Just now'
+    });
+
+    return order;
   }
 
   /**

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { ShopifyService } from '../services/shopifyService';
+import { NotificationService } from '../services/notificationService';
 
 const router = Router();
 
@@ -23,6 +24,25 @@ router.get('/products', async (req, res) => {
   try {
     const products = await ShopifyService.getProducts();
     res.json(products);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/orders/simulate
+router.post('/simulate', async (req, res) => {
+  try {
+    const { customer, amount } = req.body;
+    const orderId = `SHP-${Math.floor(1000 + Math.random() * 9000)}`;
+    
+    await NotificationService.addNotification({
+      type: 'order',
+      title: 'New Order Received',
+      message: `${customer || 'A customer'} just placed an order for ${amount || '৳ 0'}.`,
+      time: 'Just now'
+    });
+
+    res.json({ success: true, orderId });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

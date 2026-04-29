@@ -32,4 +32,18 @@ export class NotificationService {
     this.notifications.forEach(n => n.unread = false);
     return this.notifications;
   }
+
+  static async addNotification(notification: Omit<Notification, 'id' | 'unread'>) {
+    const newNotification: Notification = {
+      ...notification,
+      id: Math.random().toString(36).substr(2, 9),
+      unread: true
+    };
+    this.notifications.unshift(newNotification);
+    // Keep only last 20 notifications
+    if (this.notifications.length > 20) {
+      this.notifications.pop();
+    }
+    return newNotification;
+  }
 }

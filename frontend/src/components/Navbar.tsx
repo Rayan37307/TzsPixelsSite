@@ -1,15 +1,35 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Search, Bell, Sun, ChevronDown } from 'lucide-react';
 import { useAuthStore } from '../store';
+import { notificationApi } from '../services/api';
+import { Link } from 'react-router-dom';
 
 export const Navbar: React.FC = () => {
   const { user } = useAuthStore();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      try {
+        const notifications = await notificationApi.getNotifications();
+        const unread = notifications.filter((n: any) => n.unread).length;
+        setUnreadCount(unread);
+      } catch (error) {
+        console.error('Failed to fetch unread count:', error);
+      }
+    };
+
+    fetchUnreadCount();
+    // Refresh every minute
+    const interval = setInterval(fetchUnreadCount, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <header className="h-20 border-b border-white/5 bg-background/50 backdrop-blur-md sticky top-0 z-40 px-8 flex items-center justify-between">
       <div className="flex items-center gap-8">
         <div className="flex flex-col">
-          <span className="text-sm text-muted-foreground font-medium">Wednesday, 18 Sep</span>
+          <span className="text-sm text-muted-foreground font-medium">{new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'short' })}</span>
           <div className="flex items-center gap-2">
             <Sun className="w-4 h-4 text-orange-400" />
             <span className="text-sm font-semibold text-white">27°C</span>
@@ -31,10 +51,12 @@ export const Navbar: React.FC = () => {
       </div>
 
       <div className="flex items-center gap-6">
-        <button className="relative w-10 h-10 rounded-full border border-white/5 flex items-center justify-center hover:bg-white/5 transition-all">
+        <Link to="/notifications" className="relative w-10 h-10 rounded-full border border-white/5 flex items-center justify-center hover:bg-white/5 transition-all">
           <Bell className="w-5 h-5 text-muted-foreground" />
-          <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border-2 border-background" />
-        </button>
+          {unreadCount > 0 && (
+            <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border-2 border-background" />
+          )}
+        </Link>
 
         <div className="flex items-center gap-3 pl-6 border-l border-white/5">
           <div className="text-right">

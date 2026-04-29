@@ -1,4 +1,5 @@
 import { ShopifyService } from './shopifyService';
+import { NotificationService } from './notificationService';
 
 export class DashboardService {
   static async getDashboardStats() {
@@ -68,12 +69,15 @@ export class DashboardService {
         { name: 'Returned', value: statusCounts['Returned'], color: '#ef4444' },
       ];
 
-      const activityFeed = orders.slice(0, 5).map((order: any) => ({
-        id: order.id,
-        type: 'order',
-        message: `New order ${order.id} from ${order.customer}`,
-        time: order.date,
-        status: order.status === 'Delivered' ? 'success' : 'warning'
+      const notifications = await NotificationService.getNotifications();
+      const activityFeed = notifications.slice(0, 5).map((n: any) => ({
+        id: n.id,
+        type: n.type,
+        message: n.message,
+        time: n.time,
+        status: n.type === 'fraud' ? 'danger' : 
+                n.type === 'order' ? 'success' : 
+                n.type === 'abandoned' ? 'warning' : 'info'
       }));
 
       return {
