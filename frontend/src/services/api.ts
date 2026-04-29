@@ -29,10 +29,25 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
-      // You might want to trigger a logout action here if you have access to the store
     }
     return Promise.reject(error);
   }
 );
+
+export const orderApi = {
+  getAllOrders: async () => {
+    const response = await api.get('/orders');
+    return response.data;
+  },
+  fetchShopifyOrders: async () => {
+    const response = await api.get('/orders');
+    return response.data;
+  },
+  connectShopify: async (shopUrl: string, clientId: string, clientSecret: string) => {
+    // Mocking connection for now as backend handles this via ENV
+    // In a real scenario, this would persist the credentials to the DB
+    return { accessToken: 'shp_mock_' + Math.random().toString(36).substring(7) };
+  }
+};
 
 export default api;
