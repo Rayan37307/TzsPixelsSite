@@ -3,7 +3,6 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import morgan from 'morgan';
 import { orderRoutes } from './routes/orderRoutes';
-import { authRoutes } from './routes/authRoutes';
 
 dotenv.config();
 
@@ -16,7 +15,6 @@ app.use(express.json());
 
 // Routes
 app.use('/api/orders', orderRoutes);
-app.use('/api/auth', authRoutes);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
