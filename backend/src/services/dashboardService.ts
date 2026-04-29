@@ -1,0 +1,99 @@
+import { ShopifyService } from './shopifyService';
+
+export class DashboardService {
+  static async getDashboardStats() {
+    try {
+      const orders = await ShopifyService.fetchOrders();
+      
+      // Calculate basic stats
+      const totalOrders = orders.length;
+      let totalRevenue = 0;
+      let fraudAlerts = 0;
+      
+      const statusCounts: Record<string, number> = {
+        'Delivered': 0,
+        'Pending': 0,
+        'Shipped': 0,
+        'Returned': 0
+      };
+
+      // Aggregate sales by day for the last 7 days
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const last7DaysSales: Record<string, { revenue: number, orders: number }> = {};
+      
+      // Initialize last 7 days
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dayName = days[d.getDay()];
+        last7DaysSales[dayName] = { revenue: 0, orders: 0 };
+      }
+
+      orders.forEach((order: any) => {
+        // Parse amount (expecting "CURRENCY VALUE")
+        const amountMatch = order.amount.match(/(\d+\.?\d*)/);
+        const amount = amountMatch ? parseFloat(amountMatch[1]) : 0;
+        
+        totalRevenue += amount;
+        
+        if (order.fraudRisk === 'High' || order.fraudRisk === 'Medium') {
+          fraudAlerts++;
+        }
+        
+        if (statusCounts[order.status] !== undefined) {
+          statusCounts[order.status]++;
+        } else {
+          statusCounts['Pending']++;
+        }
+
+        // Sales data by day
+        const orderDate = new Date(order.date);
+        const dayName = days[orderDate.getDay()];
+        if (last7DaysSales[dayName]) {
+          last7DaysSales[dayName].revenue += amount;
+          last7DaysSales[dayName].orders += 1;
+        }
+      });
+
+      const salesData = Object.entries(last7DaysSales).map(([name, data]) => ({
+        name,
+        revenue: Math.round(data.revenue),
+        orders: data.orders
+      }));
+
+      const orderStatusData = [
+        { name: 'Delivered', value: statusCounts['Delivered'], color: '#10b981' },
+        { name: 'Pending', value: statusCounts['Pending'], color: '#f59e0b' },
+        { name: 'Shipped', value: statusCounts['Shipped'], color: '#3b82f6' },
+        { name: 'Returned', value: statusCounts['Returned'], color: '#ef4444' },
+      ];
+
+      const activityFeed = orders.slice(0, 5).map((order: any) => ({
+        id: order.id,
+        type: 'order',
+        message: `New order ${order.id} from ${order.customer}`,
+        time: order.date,
+        status: order.status === 'Delivered' ? 'success' : 'warning'
+      }));
+
+      return {
+        stats: {
+          totalRevenue: `৳ ${totalRevenue.toLocaleString('en-IN')}`,
+          totalOrders: totalOrders,
+          fraudAlerts: fraudAlerts,
+          recoveryRate: '12.5%', // Mocked for now
+          revenueChange: '+15.2%',
+          ordersChange: '+8.4%',
+          fraudChange: '-2.1%',
+          recoveryChange: '+1.2%'
+        },
+        salesData,
+        orderStatusData,
+        activityFeed
+      };
+    } catch (error) {
+      console.error('Error in DashboardService:', error);
+      throw error;
+    }
+  }
+}

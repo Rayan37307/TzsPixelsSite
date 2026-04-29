@@ -1,20 +1,59 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { notificationApi } from '../services/api';
 import { Card, Button } from '../components/ui/Base';
 import { ShieldAlert, ShoppingBag, Truck, UserX } from 'lucide-react';
 
 export const NotificationsCenter: React.FC = () => {
-  const notifications = [
-    { id: 1, type: 'fraud', title: 'High Risk Order Detected', message: 'Order #1247 has a fraud score of 85. Review required.', time: '2 mins ago', unread: true },
-    { id: 2, type: 'order', title: 'New Order Received', message: 'Michael Chen just placed an order for $125.50.', time: '15 mins ago', unread: true },
-    { id: 3, type: 'abandoned', title: 'High Value Abandoned Cart', message: 'A cart worth $1,200.00 was just abandoned.', time: '1 hour ago', unread: false },
-    { id: 4, type: 'courier', title: 'Delivery Exception', message: 'Order #1233 is delayed due to weather conditions.', time: '3 hours ago', unread: false },
-  ];
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  const fetchNotifications = async () => {
+    try {
+      const data = await notificationApi.getNotifications();
+      setNotifications(data);
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const markAllRead = async () => {
+    try {
+      await notificationApi.markAllAsRead();
+      fetchNotifications();
+    } catch (error) {
+      console.error('Failed to mark all as read:', error);
+    }
+  };
+
+  const markRead = async (id: string) => {
+    try {
+      await notificationApi.markAsRead(id);
+      fetchNotifications();
+    } catch (error) {
+      console.error('Failed to mark as read:', error);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-white tracking-tight">Notifications</h1>
-        <Button variant="outline" size="sm">Mark all as read</Button>
+        <Button variant="outline" size="sm" onClick={markAllRead}>Mark all as read</Button>
       </div>
 
       <div className="space-y-4">
@@ -36,7 +75,14 @@ export const NotificationsCenter: React.FC = () => {
                 {n.unread && (
                   <div className="mt-3 flex gap-2">
                     <Button size="sm" className="h-7 text-[10px] px-3">View Details</Button>
-                    <Button variant="ghost" size="sm" className="h-7 text-[10px] px-3">Dismiss</Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-7 text-[10px] px-3"
+                      onClick={() => markRead(n.id)}
+                    >
+                      Dismiss
+                    </Button>
                   </div>
                 )}
               </div>

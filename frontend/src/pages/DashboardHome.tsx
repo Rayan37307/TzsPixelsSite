@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { dashboardApi } from '../services/api';
 import { 
   TrendingUp, 
   ShoppingBag, 
@@ -24,31 +25,46 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, Badge, Button } from '../components/ui/Base';
 import { cn } from '../utils/cn';
 
-const salesData = [
-  { name: 'Mon', revenue: 4000, orders: 24 },
-  { name: 'Tue', revenue: 3000, orders: 18 },
-  { name: 'Wed', revenue: 2000, orders: 12 },
-  { name: 'Thu', revenue: 2780, orders: 19 },
-  { name: 'Fri', revenue: 1890, orders: 15 },
-  { name: 'Sat', revenue: 2390, orders: 22 },
-  { name: 'Sun', revenue: 3490, orders: 28 },
-];
-
-const orderStatusData = [
-  { name: 'Delivered', value: 400, color: '#10b981' },
-  { name: 'Pending', value: 300, color: '#f59e0b' },
-  { name: 'Shipped', value: 300, color: '#3b82f6' },
-  { name: 'Returned', value: 200, color: '#ef4444' },
-];
-
-const activityFeed = [
-  { id: 1, type: 'order', message: 'New order #1245 from Sarah J.', time: '2 mins ago', status: 'success' },
-  { id: 2, type: 'fraud', message: 'Suspicious login attempt from VPN', time: '15 mins ago', status: 'danger' },
-  { id: 3, type: 'abandoned', message: 'Cart abandoned ($458.00) - John Doe', time: '1 hour ago', status: 'warning' },
-  { id: 4, type: 'ai', message: 'AI resolved refund query for #1233', time: '2 hours ago', status: 'info' },
-];
-
 export const DashboardHome: React.FC = () => {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const stats = await dashboardApi.getStats();
+        setData(stats);
+      } catch (err) {
+        console.error('Failed to fetch dashboard stats:', err);
+        setError('Failed to load dashboard data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="p-8 text-center bg-red-500/10 border border-red-500/20 rounded-2xl">
+        <p className="text-red-400">{error || 'Something went wrong'}</p>
+        <Button className="mt-4" onClick={() => window.location.reload()}>Retry</Button>
+      </div>
+    );
+  }
+
+  const { stats, salesData, orderStatusData, activityFeed } = data;
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex items-center justify-between">
@@ -70,10 +86,10 @@ export const DashboardHome: React.FC = () => {
             <TrendingUp className="w-4 h-4 text-emerald-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">$45,231.89</div>
+            <div className="text-2xl font-bold text-white">{stats.totalRevenue}</div>
             <div className="flex items-center gap-1 mt-1">
               <span className="text-emerald-400 text-xs font-semibold flex items-center">
-                <ArrowUpRight className="w-3 h-3 mr-0.5" /> +20.1%
+                <ArrowUpRight className="w-3 h-3 mr-0.5" /> {stats.revenueChange}
               </span>
               <span className="text-muted-foreground text-[10px]">from last month</span>
             </div>
@@ -86,10 +102,10 @@ export const DashboardHome: React.FC = () => {
             <ShoppingBag className="w-4 h-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">+2,350</div>
+            <div className="text-2xl font-bold text-white">+{stats.totalOrders}</div>
             <div className="flex items-center gap-1 mt-1">
               <span className="text-emerald-400 text-xs font-semibold flex items-center">
-                <ArrowUpRight className="w-3 h-3 mr-0.5" /> +12.5%
+                <ArrowUpRight className="w-3 h-3 mr-0.5" /> {stats.ordersChange}
               </span>
               <span className="text-muted-foreground text-[10px]">from last month</span>
             </div>
@@ -102,10 +118,10 @@ export const DashboardHome: React.FC = () => {
             <AlertTriangle className="w-4 h-4 text-red-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">12</div>
+            <div className="text-2xl font-bold text-white">{stats.fraudAlerts}</div>
             <div className="flex items-center gap-1 mt-1">
               <span className="text-red-400 text-xs font-semibold flex items-center">
-                <ArrowDownRight className="w-3 h-3 mr-0.5" /> -3.2%
+                <ArrowDownRight className="w-3 h-3 mr-0.5" /> {stats.fraudChange}
               </span>
               <span className="text-muted-foreground text-[10px]">from yesterday</span>
             </div>
@@ -118,10 +134,10 @@ export const DashboardHome: React.FC = () => {
             <Activity className="w-4 h-4 text-blue-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">18.4%</div>
+            <div className="text-2xl font-bold text-white">{stats.recoveryRate}</div>
             <div className="flex items-center gap-1 mt-1">
               <span className="text-emerald-400 text-xs font-semibold flex items-center">
-                <ArrowUpRight className="w-3 h-3 mr-0.5" /> +2.1%
+                <ArrowUpRight className="w-3 h-3 mr-0.5" /> {stats.recoveryChange}
               </span>
               <span className="text-muted-foreground text-[10px]">from last month</span>
             </div>
@@ -161,7 +177,7 @@ export const DashboardHome: React.FC = () => {
                   fontSize={12} 
                   tickLine={false} 
                   axisLine={false} 
-                  tickFormatter={(value) => `$${value}`}
+                  tickFormatter={(value) => `৳${value}`}
                 />
                 <Tooltip 
                   contentStyle={{ backgroundColor: '#141414', border: '1px solid #262626', borderRadius: '12px' }}
@@ -220,7 +236,7 @@ export const DashboardHome: React.FC = () => {
       </div>
 
       {/* Bottom Grid: Activity Feed & AI Usage */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
         <Card className="lg:col-span-1">
           <CardHeader className="flex-row items-center justify-between">
             <CardTitle>Live Activity</CardTitle>
@@ -271,37 +287,6 @@ export const DashboardHome: React.FC = () => {
               </div>
             </div>
             <Button className="w-full">Open AI Studio</Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>Courier Performance</CardTitle>
-            <Truck className="w-4 h-4 text-blue-400" />
-          </CardHeader>
-          <CardContent className="space-y-4">
-             <div className="space-y-3">
-                {[
-                  { name: 'FedEx', rate: 98, status: 'Healthy' },
-                  { name: 'DHL', rate: 92, status: 'Healthy' },
-                  { name: 'UPS', rate: 75, status: 'Delays' },
-                ].map((courier) => (
-                  <div key={courier.name} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded bg-white/5 flex items-center justify-center text-xs font-bold">{courier.name[0]}</div>
-                      <span className="text-sm font-medium text-white">{courier.name}</span>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs font-bold text-white">{courier.rate}%</p>
-                      <p className={cn(
-                        "text-[10px]",
-                        courier.status === 'Healthy' ? 'text-emerald-400' : 'text-red-400'
-                      )}>{courier.status}</p>
-                    </div>
-                  </div>
-                ))}
-             </div>
-             <Button variant="outline" className="w-full">Track Parcels</Button>
           </CardContent>
         </Card>
       </div>
