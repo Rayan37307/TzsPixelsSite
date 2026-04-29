@@ -1,24 +1,38 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-export const orderApi = {
-  // Simulate fetching Shopify orders
-  fetchShopifyOrders: async () => {
-    const response = await axios.get(`${API_BASE_URL}/orders`);
-    return response.data;
+const api = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json',
   },
+});
 
-  getAllOrders: async () => {
-    const response = await axios.get(`${API_BASE_URL}/orders`);
-    return response.data;
+// Add a request interceptor to include the token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
   },
-
-  fetchOrdersByStore: async (storeId: string, platform: string) => {
-    // In production, the backend would handle the specific platform logic
-    const response = await axios.get(`${API_BASE_URL}/orders`, {
-      params: { storeId, platform }
-    });
-    return response.data;
+  (error) => {
+    return Promise.reject(error);
   }
-};
+);
+
+// Add a response interceptor to handle token expiration
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      // You might want to trigger a logout action here if you have access to the store
+    }
+    return Promise.reject(error);
+  }
+);
+
+export default api;
