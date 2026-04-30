@@ -10,6 +10,7 @@ import { AIAssistant } from './pages/AIAssistant';
 import { AbandonedCheckout } from './pages/AbandonedCheckout';
 import { CourierSupport } from './pages/CourierSupport';
 import { NotificationsCenter } from './pages/NotificationsCenter';
+import { BotManagement } from './pages/BotManagement';
 import { Login } from './pages/Login';
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App: React.FC = () => {
             <Route path="/abandoned" element={<AbandonedCheckout />} />
             <Route path="/courier" element={<CourierSupport />} />
             <Route path="/notifications" element={<NotificationsCenter />} />
+            <Route path="/bots" element={<BotManagement />} />
             <Route path="/settings" element={<div className="p-8 text-white">Settings Page Coming Soon</div>} />
           </Route>
 

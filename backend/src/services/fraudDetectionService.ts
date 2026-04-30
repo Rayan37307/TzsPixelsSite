@@ -115,7 +115,7 @@ export async function scanNewOrders(): Promise<FraudCheckRecord[]> {
           `INSERT INTO fraud_checks (
             order_id, order_number, customer_name, customer_phone, customer_email,
             billing_country, shipping_country, shipping_address, amount,
-            risk_score, risk_level, red_flags, status, created_at, updated_at
+            risk_score, risk_level, red_flags, status, scanned_at, reviewed_at
           ) VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
           )
@@ -123,7 +123,7 @@ export async function scanNewOrders(): Promise<FraudCheckRecord[]> {
             risk_score = EXCLUDED.risk_score,
             risk_level = EXCLUDED.risk_level,
             red_flags = EXCLUDED.red_flags,
-            updated_at = EXCLUDED.updated_at,
+            reviewed_at = EXCLUDED.reviewed_at,
             status = CASE 
               WHEN fraud_checks.status = 'reviewed' THEN fraud_checks.status 
               ELSE EXCLUDED.status 
@@ -195,35 +195,38 @@ export async function getFraudChecks(
       params.push(status);
     }
     
-    sql += ' ORDER BY created_at DESC LIMIT $' + (params.length + 1);
+    sql += ' ORDER BY scanned_at DESC LIMIT $' + (params.length + 1);
     params.push(limit);
     
     const result = await query(sql, params);
     
-    return result.rows.map((row: any) => ({
-      id: row.id,
-      orderId: row.order_id,
-      orderNumber: row.order_number,
-      customerName: row.customer_name,
-      customerPhone: row.customer_phone,
-      customerEmail: row.customer_email,
-      billingCountry: row.billing_country,
-      shippingCountry: row.shipping_country,
-      shippingAddress: row.shipping_address,
-      amount: parseFloat(row.amount),
-      riskScore: row.risk_score,
-      riskLevel: row.risk_level,
-      redFlags: typeof row.red_flags === 'string' ? JSON.parse(row.red_flags) : row.red_flags,
-      status: row.status,
-      reviewedBy: row.reviewed_by,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at
-    })));
-    
+    return result.rows.map(mapRowToFraudCheck);
   } catch (error) {
     console.error('[Fraud Detection] Error fetching fraud checks:', error);
     throw error;
   }
+}
+
+function mapRowToFraudCheck(row: any): FraudCheckRecord {
+  return {
+    id: row.id,
+    orderId: row.order_id,
+    orderNumber: row.order_number,
+    customerName: row.customer_name,
+    customerPhone: row.customer_phone,
+    customerEmail: row.customer_email,
+    billingCountry: row.billing_country,
+    shippingCountry: row.shipping_country,
+    shippingAddress: row.shipping_address,
+    amount: parseFloat(row.amount),
+    riskScore: row.risk_score,
+    riskLevel: row.risk_level,
+    redFlags: typeof row.red_flags === 'string' ? JSON.parse(row.red_flags) : row.red_flags,
+    status: row.status,
+    reviewedBy: row.reviewed_by,
+    createdAt: row.scanned_at,
+    updatedAt: row.reviewed_at
+  };
 }
 
 /**
@@ -231,13 +234,13 @@ export async function getFraudChecks(
  */
 export async function updateFraudCheckStatus(
   orderId: string,
-  status: 'pending' | 'reviewed' | 'approved' | 'rejected',
+  status: 'pending' | 'reviewed' | 'approved' | 'rejected' | 'blocked' | 'held',
   reviewedBy?: string
 ): Promise<FraudCheckRecord | null> {
   try {
     const result = await query(
       `UPDATE fraud_checks 
-       SET status = $1, reviewed_by = $2, updated_at = NOW()
+       SET status = $1, reviewed_by = $2, reviewed_at = NOW()
        WHERE order_id = $3
        RETURNING *`,
       [status, reviewedBy || null, orderId]
@@ -265,8 +268,8 @@ export async function updateFraudCheckStatus(
       redFlags: typeof row.red_flags === 'string' ? JSON.parse(row.red_flags) : row.red_flags,
       status: row.status,
       reviewedBy: row.reviewed_by,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at
+      createdAt: row.scanned_at,
+      updatedAt: row.reviewed_at
     };
     
   } catch (error) {
@@ -306,8 +309,8 @@ export async function getFraudCheckByOrderId(orderId: string): Promise<FraudChec
       redFlags: typeof row.red_flags === 'string' ? JSON.parse(row.red_flags) : row.red_flags,
       status: row.status,
       reviewedBy: row.reviewed_by,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at
+      createdAt: row.scanned_at,
+      updatedAt: row.reviewed_at
     };
     
   } catch (error) {

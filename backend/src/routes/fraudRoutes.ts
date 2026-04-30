@@ -5,7 +5,7 @@ import {
   getFraudCheckByOrderId,
   updateFraudCheckStatus
 } from '../services/fraudDetectionService';
-import { query } from '../db';
+import { query } from '../config/db';
 
 const router = Router();
 
@@ -62,7 +62,7 @@ router.patch('/results/:orderId', async (req, res) => {
     const { status } = req.body;
     
     // Validate status
-    const validStatuses = ['pending', 'reviewed', 'approved', 'rejected'];
+    const validStatuses = ['pending', 'reviewed', 'approved', 'rejected', 'blocked', 'held'];
     if (!status || !validStatuses.includes(status)) {
       return res.status(400).json({
         success: false,

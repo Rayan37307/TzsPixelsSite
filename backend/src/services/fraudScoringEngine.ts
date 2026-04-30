@@ -86,7 +86,7 @@ export function getPhoneCountry(phone: string): string | null {
     const match = cleaned.match(/^\+(\d{1,3})/);
     if (match) {
       // Map common country codes to country names
-      const countryCodeMap: Record<string, string> = {
+const countryCodeMap: Record<string, string> = {
         '1': 'US',
         '44': 'GB',
         '49': 'DE',
@@ -95,7 +95,6 @@ export function getPhoneCountry(phone: string): string | null {
         '86': 'CN',
         '91': 'IN',
         '880': 'BD',
-        '1': 'CA',
         '61': 'AU',
         '55': 'BR',
         '7': 'RU'

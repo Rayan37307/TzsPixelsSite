@@ -16,10 +16,12 @@ export const FraudDetection: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const queryClient = useQueryClient();
 
-  const { data: fraudList = [], isLoading, error } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['fraudChecks', statusFilter],
     queryFn: () => fraudApi.fetchFraudChecks(statusFilter || undefined),
   });
+
+  const fraudList = data?.data || [];
 
   const scanMutation = useMutation({
     mutationFn: fraudApi.triggerFraudScan,

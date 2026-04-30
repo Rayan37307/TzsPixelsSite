@@ -22,7 +22,7 @@ const menuItems = [
   { icon: ShoppingBag, label: 'Orders', path: '/orders' },
   { icon: Store, label: 'Stores', path: '/stores' },
   { icon: ShieldAlert, label: 'Fraud Detection', path: '/fraud' },
-  { icon: MessageSquareCode, label: 'AI Assistant', path: '/ai' },
+  { icon: MessageSquareCode, label: 'Bot Studio', path: '/bots' },
   { icon: UserX, label: 'Abandoned', path: '/abandoned' },
   { icon: Truck, label: 'Courier', path: '/courier' },
   { icon: Bell, label: 'Notifications', path: '/notifications' },

@@ -7,7 +7,6 @@ import {
   ArrowUpRight, 
   ArrowDownRight,
   Bot,
-  Truck,
   Activity
 } from 'lucide-react';
 import { 
@@ -213,7 +212,7 @@ export const DashboardHome: React.FC = () => {
                   paddingAngle={5}
                   dataKey="value"
                 >
-                  {orderStatusData.map((entry, index) => (
+                  {orderStatusData.map((entry: any, index: number) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
@@ -223,7 +222,7 @@ export const DashboardHome: React.FC = () => {
               </PieChart>
             </ResponsiveContainer>
             <div className="grid grid-cols-2 gap-4 mt-4 w-full">
-              {orderStatusData.map((status) => (
+              {orderStatusData.map((status: any) => (
                 <div key={status.name} className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full" style={{ backgroundColor: status.color }} />
                   <span className="text-xs text-muted-foreground">{status.name}</span>
@@ -243,7 +242,7 @@ export const DashboardHome: React.FC = () => {
             <Badge variant="info">Live</Badge>
           </CardHeader>
           <CardContent className="space-y-6">
-            {activityFeed.map((item) => (
+            {activityFeed.map((item: any) => (
               <div key={item.id} className="flex gap-4 relative">
                 <div className={cn(
                   "w-2 h-2 rounded-full mt-1.5",
