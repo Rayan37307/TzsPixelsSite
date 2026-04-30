@@ -1,21 +1,65 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Globe, 
   Phone, 
   CreditCard,
-  History
+  History,
+  ScanLine,
+  Loader2
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, Badge, Button } from '../components/ui/Base';
 import { cn } from '../utils/cn';
-
-const fraudList = [
-  { id: 'ORD-1247', customer: 'Emma Wilson', score: 85, risk: 'High', reasons: ['VPN Detected', 'Suspicious Value'], amount: '$890.00' },
-  { id: 'ORD-1246', customer: 'Michael Chen', score: 42, risk: 'Medium', reasons: ['New Customer', 'Multiple Attempts'], amount: '$125.50' },
-  { id: 'ORD-1252', customer: 'Alice Smith', score: 92, risk: 'High', reasons: ['Duplicate Phone', 'Repeat Cancellation'], amount: '$1,500.00' },
-  { id: 'ORD-1245', customer: 'Sarah Johnson', score: 12, risk: 'Low', reasons: ['Verified Customer'], amount: '$458.00' },
-];
+import { fraudApi } from '../services/api';
 
 export const FraudDetection: React.FC = () => {
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  const queryClient = useQueryClient();
+
+  const { data: fraudList = [], isLoading, error } = useQuery({
+    queryKey: ['fraudChecks', statusFilter],
+    queryFn: () => fraudApi.fetchFraudChecks(statusFilter || undefined),
+  });
+
+  const scanMutation = useMutation({
+    mutationFn: fraudApi.triggerFraudScan,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['fraudChecks'] });
+    },
+  });
+
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ orderId, status }: { orderId: string; status: string }) => 
+      fraudApi.updateFraudStatus(orderId, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['fraudChecks'] });
+    },
+  });
+
+  const getRiskLevel = (score: number): 'High' | 'Medium' | 'Low' => {
+    if (score >= 70) return 'High';
+    if (score >= 30) return 'Medium';
+    return 'Low';
+  };
+
+  const formatAmount = (amount: number) => `$${amount.toFixed(2)}`;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-red-400">Failed to load fraud checks. Please try again.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
       <div className="flex items-center justify-between">
@@ -24,44 +68,99 @@ export const FraudDetection: React.FC = () => {
           <p className="text-muted-foreground mt-1">Real-time risk assessment and fraud prevention.</p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline">Review History</Button>
-          <Button variant="danger">Block Settings</Button>
+          <Button 
+            variant="primary" 
+            onClick={() => scanMutation.mutate()}
+            disabled={scanMutation.isPending}
+          >
+            {scanMutation.isPending ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <ScanLine className="w-4 h-4 mr-2" />
+            )}
+            Scan Now
+          </Button>
+          <Button variant="outline">Block Settings</Button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Fraud List */}
         <div className="lg:col-span-2 space-y-4">
-          <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider px-1">Pending Review</h3>
-          {fraudList.map((item) => (
-            <Card key={item.id} className="group cursor-pointer hover:ring-1 hover:ring-primary/20">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Pending Review</h3>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+            >
+              <option value="">All</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="blocked">Blocked</option>
+            </select>
+          </div>
+          {fraudList.length === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                No fraud checks found.
+              </CardContent>
+            </Card>
+          ) : (
+          fraudList.map((item: any) => (
+            <Card key={item.orderId || item.id} className="group cursor-pointer hover:ring-1 hover:ring-primary/20">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className={cn(
                     "w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-bold",
-                    item.risk === 'High' ? 'bg-red-500/20 text-red-400' : 
-                    item.risk === 'Medium' ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'
+                    getRiskLevel(item.riskScore) === 'High' ? 'bg-red-500/20 text-red-400' : 
+                    getRiskLevel(item.riskScore) === 'Medium' ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'
                   )}>
-                    {item.score}
+                    {item.riskScore}
                   </div>
                   <div>
                     <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                      {item.id} • {item.customer}
-                      <Badge variant={item.risk === 'High' ? 'danger' : item.risk === 'Medium' ? 'warning' : 'success'}>
-                        {item.risk} Risk
+                      {item.orderId} • {item.customerName || item.customer}
+                      <Badge variant={getRiskLevel(item.riskScore) === 'High' ? 'danger' : getRiskLevel(item.riskScore) === 'Medium' ? 'warning' : 'success'}>
+                        {getRiskLevel(item.riskScore)} Risk
                       </Badge>
                     </h4>
-                    <p className="text-xs text-muted-foreground mt-1">Amount: {item.amount} • {item.reasons.join(', ')}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Amount: {formatAmount(item.amount)} • {(item.riskReasons || item.reasons || []).join(', ')}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                   <Button variant="outline" size="sm" className="h-8 text-emerald-400 hover:bg-emerald-500/10">Approve</Button>
-                   <Button variant="outline" size="sm" className="h-8 text-amber-400 hover:bg-amber-500/10">Hold</Button>
-                   <Button variant="danger" size="sm" className="h-8">Block</Button>
+                   <Button 
+                     variant="outline" 
+                     size="sm" 
+                     className="h-8 text-emerald-400 hover:bg-emerald-500/10"
+                     onClick={() => updateStatusMutation.mutate({ orderId: item.orderId || item.id, status: 'approved' })}
+                     disabled={updateStatusMutation.isPending}
+                   >
+                     Approve
+                   </Button>
+                   <Button 
+                     variant="outline" 
+                     size="sm" 
+                     className="h-8 text-amber-400 hover:bg-amber-500/10"
+                     onClick={() => updateStatusMutation.mutate({ orderId: item.orderId || item.id, status: 'pending' })}
+                     disabled={updateStatusMutation.isPending}
+                   >
+                     Hold
+                   </Button>
+                   <Button 
+                     variant="danger" 
+                     size="sm" 
+                     className="h-8"
+                     onClick={() => updateStatusMutation.mutate({ orderId: item.orderId || item.id, status: 'blocked' })}
+                     disabled={updateStatusMutation.isPending}
+                   >
+                     Block
+                   </Button>
                 </div>
               </div>
             </Card>
-          ))}
+          ))
+          )}
         </div>
 
         {/* Breakdown & Stats */}

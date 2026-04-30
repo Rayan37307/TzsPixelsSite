@@ -20,6 +20,13 @@ export const orderApi = {
       params: { storeId, platform }
     });
     return response.data;
+  },
+
+  connectShopify: async (shopUrl: string, clientId: string, clientSecret: string) => {
+    const response = await axios.post(`${API_BASE_URL}/stores/connect`, {
+      shopUrl, clientId, clientSecret
+    });
+    return response.data;
   }
 };
 
@@ -41,6 +48,48 @@ export const notificationApi = {
   },
   markAllAsRead: async () => {
     const response = await axios.post(`${API_BASE_URL}/notifications/read-all`);
+    return response.data;
+  }
+};
+
+export const botApi = {
+  createBot: async (data: any) => {
+    const response = await axios.post(`${API_BASE_URL}/bots`, data);
+    return response.data;
+  },
+  getAllBots: async () => {
+    const response = await axios.get(`${API_BASE_URL}/bots`);
+    return response.data;
+  },
+  getBot: async (id: string) => {
+    const response = await axios.get(`${API_BASE_URL}/bots/${id}`);
+    return response.data;
+  },
+  updateBot: async (id: string, data: any) => {
+    const response = await axios.put(`${API_BASE_URL}/bots/${id}`, data);
+    return response.data;
+  },
+  deleteBot: async (id: string) => {
+    const response = await axios.delete(`${API_BASE_URL}/bots/${id}`);
+    return response.data;
+  },
+  chat: async (id: string, message: string, history: any[]) => {
+    const response = await axios.post(`${API_BASE_URL}/bots/${id}/chat`, { message, history });
+    return response.data;
+  }
+};
+
+export const fraudApi = {
+  fetchFraudChecks: async (status?: string) => {
+    const response = await axios.get(`${API_BASE_URL}/fraud/results`, { params: { status } });
+    return response.data;
+  },
+  triggerFraudScan: async () => {
+    const response = await axios.post(`${API_BASE_URL}/fraud/scan`);
+    return response.data;
+  },
+  updateFraudStatus: async (orderId: string, status: string) => {
+    const response = await axios.patch(`${API_BASE_URL}/fraud/results/${orderId}`, { status });
     return response.data;
   }
 };

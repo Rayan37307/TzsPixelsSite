@@ -21,7 +21,8 @@ import { useStoreStore } from '../store/useStoreStore';
 export const OrderManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const { orders, isLoading, isSyncing, syncShopify } = useOrders();
-  const { stores } = useStoreStore();
+  // Note: store store available via useStoreStore() hook
+  void useStoreStore(); // suppress unused warning for future use
 
   const handleSync = () => {
     syncShopify();
@@ -104,10 +105,10 @@ export const OrderManagement: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {orders.filter(o => 
+                {orders.filter((o: any) => 
                   o.customer.toLowerCase().includes(searchTerm.toLowerCase()) || 
                   o.id.toLowerCase().includes(searchTerm.toLowerCase())
-                ).map((order) => (
+                ).map((order: any) => (
                   <tr key={order.id} className="hover:bg-white/[0.02] transition-colors group">
                     <td className="px-6 py-4">
                       <span className="text-sm font-bold text-white">{order.id}</span>
