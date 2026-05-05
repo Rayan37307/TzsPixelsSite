@@ -157,5 +157,114 @@ export class ShopifyService {
   static async getProducts() {
     const data = await this.shopifyFetch('/products.json');
     return data.products;
+
+  }
+
+  /**
+   * GraphQL fetch for Shopify
+   */
+  private static async shopifyGraphQL(query: string, variables: any = {}) {
+    const token = await this.getAccessToken();
+    const response = await axios.post(
+      `${this.BASE_URL}/graphql.json`,
+      { query, variables },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Shopify-Access-Token': token,
+        },
+      }
+    );
+    if (response.data.errors) {
+      console.error('❌ [Shopify GraphQL] Errors:', response.data.errors);
+      throw new Error(response.data.errors[0].message);
+    }
+    return response.data.data;
+  }
+
+  /**
+   * Fetch abandoned checkouts
+   */
+  static async fetchAbandonedCheckouts() {
+    const query = `
+      query GetAbandonedCheckouts($cursor: String) {
+        abandonedCheckouts(first: 50, after: $cursor) {
+          edges {
+            node {
+              id
+              createdAt
+              updatedAt
+              abandonedCheckoutUrl
+              completedAt
+              totalPriceSet {
+                shopMoney {
+                  amount
+                  currencyCode
+                }
+              }
+              lineItems(first: 10) {
+                edges {
+                  node {
+                    title
+                    quantity
+                    variant {
+                      id
+                      price
+                    }
+                  }
+                }
+              }
+              customer {
+                id
+                firstName
+                lastName
+                email
+                phone
+              }
+            }
+          }
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
+        }
+      }
+    `;
+
+    const allCheckouts: any[] = [];
+    let cursor: string | null = null;
+    let hasNextPage = true;
+
+    while (hasNextPage) {
+      const data = await this.shopifyGraphQL(query, { cursor });
+      const checkouts = data.abandonedCheckouts.edges;
+      
+      for (const edge of checkouts) {
+        const node = edge.node;
+        if (!node.completedAt) {
+          allCheckouts.push({
+            id: node.id,
+            createdAt: node.createdAt,
+            updatedAt: node.updatedAt,
+            checkoutUrl: node.abandonedCheckoutUrl,
+            email: node.customer?.email,
+            phone: node.customer?.phone,
+            amount: parseFloat(node.totalPriceSet?.shopMoney?.amount || '0'),
+            currency: node.totalPriceSet?.shopMoney?.currencyCode || 'BDT',
+            lineItems: node.lineItems?.edges?.map((e: any) => ({
+              title: e.node.title,
+              quantity: e.node.quantity,
+              price: parseFloat(e.node.variant?.price || '0'),
+            })) || [],
+            customer: node.customer,
+          });
+        }
+      }
+
+      hasNextPage = data.abandonedCheckouts.pageInfo.hasNextPage;
+      cursor = data.abandonedCheckouts.pageInfo.endCursor;
+    }
+
+    return allCheckouts;
   }
 }

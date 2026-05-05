@@ -11,7 +11,8 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  LogOut
+  LogOut,
+  MessageCircle
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '../utils/cn';
@@ -23,6 +24,7 @@ const menuItems = [
   { icon: Store, label: 'Stores', path: '/stores' },
   { icon: ShieldAlert, label: 'Fraud Detection', path: '/fraud' },
   { icon: MessageSquareCode, label: 'Bot Studio', path: '/bots' },
+  { icon: MessageCircle, label: 'Messenger', path: '/messenger' },
   { icon: UserX, label: 'Abandoned', path: '/abandoned' },
   { icon: Truck, label: 'Courier', path: '/courier' },
   { icon: Bell, label: 'Notifications', path: '/notifications' },

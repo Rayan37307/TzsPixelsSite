@@ -9,7 +9,10 @@ import { notificationRoutes } from './routes/notificationRoutes';
 import { aiRoutes } from './routes/aiRoutes';
 import { botRoutes } from './routes/botRoutes';
 import { fraudRoutes } from './routes/fraudRoutes';
+import { messengerRoutes } from './routes/messengerRoutes';
+import abandonedRoutes from './routes/abandonedRoutes';
 import { scanNewOrders } from './services/fraudDetectionService';
+import { ShopifyService } from './services/shopifyService';
 
 dotenv.config();
 
@@ -28,6 +31,8 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/bots', botRoutes);
 app.use('/api/fraud', fraudRoutes);
+app.use('/api/messenger', messengerRoutes);
+app.use('/api/shopify', abandonedRoutes);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -41,6 +46,17 @@ cron.schedule('*/30 * * * *', async () => {
     console.log('[Fraud] Scan completed');
   } catch (error) {
     console.error('[Fraud] Scan failed:', error);
+  }
+});
+
+// Abandoned checkout scan every 30 minutes
+cron.schedule('*/30 * * * *', async () => {
+  console.log('[Abandoned] Running scheduled scan...');
+  try {
+    await ShopifyService.fetchAbandonedCheckouts();
+    console.log('[Abandoned] Scan completed');
+  } catch (error) {
+    console.error('[Abandoned] Scan failed:', error);
   }
 });
 

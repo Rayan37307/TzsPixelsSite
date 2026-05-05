@@ -93,3 +93,14 @@ export const fraudApi = {
     return response.data;
   }
 };
+
+export const messengerApi = {
+  getConversations: async () => {
+    const response = await axios.get(`${API_BASE_URL}/messenger/conversations`);
+    return response.data;
+  },
+  getConversation: async (chatId: string) => {
+    const response = await axios.get(`${API_BASE_URL}/messenger/conversations/${chatId}`);
+    return response.data;
+  }
+};
