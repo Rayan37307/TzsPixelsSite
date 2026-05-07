@@ -71,7 +71,7 @@ cron.schedule('*/30 * * * *', async () => {
 });
 
 app.listen(PORT, async () => {
-  console.log(`🚀 Scalefy Backend running on http://localhost:${PORT}`);
+  console.log(`🚀 Tzs Pixels Backend running on http://localhost:${PORT}`);
   
   // Initialize messaging tables
   try {

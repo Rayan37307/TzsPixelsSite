@@ -80,7 +80,7 @@ export class ShopifyService {
   }
 
   /**
-   * Fetch all orders and normalize them to Scalefy format
+   * Fetch all orders and normalize them to Tzs Pixels format
    */
   static async fetchOrders() {
     const data = await this.shopifyFetch('/orders.json?status=any&limit=50');
