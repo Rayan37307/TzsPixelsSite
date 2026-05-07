@@ -67,6 +67,7 @@ export class ConversationOrchestrator {
       await FacebookAdapter.setTypingIndicator(platformUserId, 'on');
 
       // Process with AI
+      console.log(`[Orchestrator] Calling ChatbotService for message: "${messageText.substring(0, 50)}..."`);
       const aiResponse = await ChatbotService.processMessage({
         conversationId: conversation.id,
         platformUserId,
@@ -74,8 +75,12 @@ export class ConversationOrchestrator {
         customerPhone: conversation.customer_phone || undefined
       }, messageText);
 
+      console.log(`[Orchestrator] AI response received: "${aiResponse.substring(0, 100)}..."`);
+
       // Send response to user
+      console.log(`[Orchestrator] Sending response to Facebook user ${platformUserId}...`);
       await FacebookAdapter.sendTextMessage(platformUserId, aiResponse);
+      console.log(`[Orchestrator] Message sent successfully to user ${platformUserId}`);
 
       // Save AI response
       await db.addMessage({

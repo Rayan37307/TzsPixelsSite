@@ -132,7 +132,12 @@ export class ChatbotService {
   }
 
   static async processMessage(context: ChatContext, userMessage: string): Promise<string> {
+    const geminiKeyConfigured = !!this.GEMINI_API_KEY;
+    const fbConfigured = FacebookAdapter.isConfigured();
+    console.log(`[Chatbot] isConfigured check - Gemini: ${geminiKeyConfigured}, Facebook: ${fbConfigured}`);
+
     if (!this.isConfigured()) {
+      console.error('[Chatbot] NOT CONFIGURED - Gemini key or FB adapter missing!');
       return 'আমাদের সিস্টেমে সমস্যা হচ্ছে। অনুগ্রহ করে কিছুক্ষণ পরে চেষ্টা করুন।';
     }
 
@@ -176,9 +181,14 @@ ${conversationHistory}
 তারপর প্রাসঙ্গিক উত্তর দিন।`;
 
     try {
+      console.log('[Chatbot] Processing message:', userMessage.substring(0, 100));
+      console.log('[Chatbot] Customer:', context.customerName, '| Phone:', context.customerPhone);
+      console.log('[Chatbot] Conversation history count:', history.length);
+
       // Call Gemini API
+      console.log('[Chatbot] Calling Gemini API...');
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${this.GEMINI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${this.GEMINI_API_KEY}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -192,8 +202,27 @@ ${conversationHistory}
         }
       );
 
+      console.log('[Chatbot] Gemini response status:', response.status);
+
       const data = await response.json();
-      const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || 'দুঃখিত, আমি এই মুহূর্তে উত্তর দিতে পারছি না।';
+      console.log('[Chatbot] Gemini raw response:', JSON.stringify(data, null, 2));
+
+      // Check for API errors
+      if (data.error) {
+        console.error('[Chatbot] Gemini API error:', data.error);
+        return 'দুঃখিত, AI সার্ভারে সমস্যা হয়েছে। আবার চেষ্টা করুন।';
+      }
+
+      // Check for empty response
+      const rawResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      console.log('[Chatbot] Raw AI response:', rawResponse);
+
+      if (!rawResponse || rawResponse.trim() === '') {
+        console.error('[Chatbot] Empty response from Gemini - returning fallback');
+        return 'দুঃখিত, আমি এই মুহূর্তে উত্তর দিতে পারছি না।';
+      }
+
+      const aiResponse = rawResponse;
 
       // Parse if AI wants to call a tool (simple implementation)
       const responseLower = aiResponse.toLowerCase();
@@ -205,7 +234,12 @@ ${conversationHistory}
 
       return aiResponse;
     } catch (error: any) {
-      console.error('[Chatbot] Error:', error.message);
+      console.error('[Chatbot] Exception:', error.message);
+      console.error('[Chatbot] Stack:', error.stack);
+      if (error.response) {
+        console.error('[Chatbot] Response data:', error.response.data);
+        console.error('[Chatbot] Response status:', error.response.status);
+      }
       return 'দুঃখিত, কিছু সমস্যা হয়েছে। আবার চেষ্টা করুন।';
     }
   }
