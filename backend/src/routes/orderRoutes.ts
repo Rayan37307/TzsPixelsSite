@@ -1,28 +1,63 @@
 import { Router } from 'express';
 import { ShopifyService } from '../services/shopifyService';
+import { WooCommerceService } from '../services/woocommerceService';
 import { NotificationService } from '../services/notificationService';
 
 const router = Router();
 
+function getCMS() {
+  return (process.env.CMS || 'shopify').toLowerCase();
+}
+
+function isCMSConfigured(): boolean {
+  const cms = getCMS();
+  if (cms === 'shopify') {
+    return !!(process.env.SHOPIFY_CLIENT_ID && process.env.SHOPIFY_CLIENT_SECRET &&
+      process.env.SHOPIFY_CLIENT_ID !== 'your_client_id');
+  }
+  if (cms === 'wordpress' || cms === 'woocommerce') {
+    return WooCommerceService.isConfigured();
+  }
+  return false;
+}
+
+async function fetchOrders(): Promise<any[]> {
+  const cms = getCMS();
+  if (cms === 'wordpress' || cms === 'woocommerce') {
+    return WooCommerceService.fetchOrders();
+  }
+  return ShopifyService.fetchOrders();
+}
+
+async function fetchProducts(): Promise<any[]> {
+  const cms = getCMS();
+  if (cms === 'wordpress' || cms === 'woocommerce') {
+    return WooCommerceService.getProducts();
+  }
+  return ShopifyService.getProducts();
+}
+
 // GET /api/orders
 router.get('/', async (req, res) => {
   try {
-    const orders = await ShopifyService.fetchOrders();
-    return res.json(orders);
+    if (isCMSConfigured()) {
+      const orders = await fetchOrders();
+      return res.json(orders);
+    }
+    return res.json([]);
   } catch (error: any) {
     console.error('Order fetch error:', error.message);
-    // Fallback to mock data if Shopify fails, to keep the UI alive during setup
-    return res.json([
-      { id: 'ORD-1245', customer: 'Sarah Johnson', phone: '+1 234 567 8901', amount: '$458.00', status: 'Delivered', fraudRisk: 'Low', courier: 'FedEx', date: 'Oct 12, 2023' },
-      { id: 'ORD-1246', customer: 'Michael Chen', phone: '+1 234 567 8902', amount: '$125.50', status: 'Pending', fraudRisk: 'Medium', courier: 'DHL', date: 'Oct 13, 2023' },
-    ]);
+    return res.json([]);
   }
 });
 
 // GET /api/orders/products
 router.get('/products', async (req, res) => {
   try {
-    const products = await ShopifyService.getProducts();
+    if (!isCMSConfigured()) {
+      return res.json([]);
+    }
+    const products = await fetchProducts();
     res.json(products);
   } catch (error: any) {
     res.status(500).json({ error: error.message });

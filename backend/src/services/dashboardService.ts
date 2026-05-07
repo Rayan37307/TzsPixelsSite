@@ -1,10 +1,50 @@
 import { ShopifyService } from './shopifyService';
+import { WooCommerceService } from './woocommerceService';
 import { NotificationService } from './notificationService';
+
+function getCMS() {
+  return (process.env.CMS || 'shopify').toLowerCase();
+}
+
+function isCMSConfigured(): boolean {
+  const cms = getCMS();
+  console.log('[Dashboard] CMS:', cms);
+  if (cms === 'shopify') {
+    const configured = !!(process.env.SHOPIFY_CLIENT_ID && process.env.SHOPIFY_CLIENT_SECRET &&
+      process.env.SHOPIFY_CLIENT_ID !== 'your_client_id');
+    console.log('[Dashboard] Shopify configured:', configured);
+    return configured;
+  }
+  if (cms === 'wordpress' || cms === 'woocommerce') {
+    const configured = WooCommerceService.isConfigured();
+    console.log('[Dashboard] WooCommerce configured:', configured);
+    return configured;
+  }
+  return false;
+}
+
+async function fetchOrders(): Promise<any[]> {
+  const cms = getCMS();
+  console.log('[Dashboard] Fetching orders from CMS:', cms);
+  try {
+    if (cms === 'wordpress' || cms === 'woocommerce') {
+      return await WooCommerceService.fetchOrders();
+    }
+    return await ShopifyService.fetchOrders();
+  } catch (error: any) {
+    console.error('[Dashboard] fetchOrders error:', error.message);
+    return [];
+  }
+}
 
 export class DashboardService {
   static async getDashboardStats() {
     try {
-      const orders = await ShopifyService.fetchOrders();
+      let orders: any[] = [];
+      
+      if (isCMSConfigured()) {
+        orders = await fetchOrders();
+      }
       
       // Calculate basic stats
       const totalOrders = orders.length;

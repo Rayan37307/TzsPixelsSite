@@ -8,6 +8,11 @@ let lastCheckoutCount = 0;
 
 router.get('/abandoned', async (req, res) => {
   try {
+    const cms = (process.env.CMS || 'shopify').toLowerCase();
+    if (cms !== 'shopify') {
+      return res.json({ success: true, data: [], stats: { totalAbandoned: 0, lostRevenue: 0, currency: 'BDT', topProducts: [] } });
+    }
+
     const checkouts = await ShopifyService.fetchAbandonedCheckouts();
     
     if (checkouts.length > lastCheckoutCount && lastCheckoutCount > 0) {

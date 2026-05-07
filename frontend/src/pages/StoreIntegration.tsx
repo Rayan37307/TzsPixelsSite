@@ -13,41 +13,55 @@ import {
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Badge, Button } from '../components/ui/Base';
 import { useStoreStore } from '../store/useStoreStore';
 import { cn } from '../utils/cn';
-import { orderApi } from '../services/api';
+import { storeApi, orderApi } from '../services/api';
 
 export const StoreIntegration: React.FC = () => {
   const { stores, addStore, removeStore, syncStore } = useStoreStore();
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState<'Shopify' | 'WordPress' | null>(null);
-  const [shopUrl, setShopUrl] = useState('');
+  const [storeUrl, setStoreUrl] = useState('');
   const [clientId, setClientId] = useState('');
   const [clientSecret, setClientSecret] = useState('');
+  const [consumerKey, setConsumerKey] = useState('');
+  const [consumerSecret, setConsumerSecret] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
 
   const handleConnect = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!shopUrl || !clientId || !clientSecret) return;
+    if (!storeUrl) return;
 
     setIsConnecting(true);
     try {
-      // Exchange credentials for token
-      const { accessToken } = await orderApi.connectShopify(shopUrl, clientId, clientSecret);
+      const connectData = {
+        shopUrl: storeUrl,
+        platform: modalType || 'Shopify',
+        clientId: modalType === 'Shopify' ? clientId : undefined,
+        clientSecret: modalType === 'Shopify' ? clientSecret : undefined,
+        consumerKey: modalType === 'WordPress' ? consumerKey : undefined,
+        consumerSecret: modalType === 'WordPress' ? consumerSecret : undefined
+      };
 
-      addStore({
-        name: shopUrl.split('.')[0].toUpperCase(),
-        platform: modalType || 'Custom',
-        url: shopUrl,
-        accessToken: accessToken,
-      });
+      const result = await storeApi.connect(connectData);
+
+      if (result.store) {
+        addStore({
+          name: result.store.name,
+          platform: result.store.platform,
+          url: result.store.url,
+          accessToken: result.store.accessToken,
+        });
+      }
 
       setShowModal(false);
-      setShopUrl('');
+      setStoreUrl('');
       setClientId('');
       setClientSecret('');
+      setConsumerKey('');
+      setConsumerSecret('');
       setModalType(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Connection failed:', error);
-      alert('Failed to connect to Shopify. Please check your credentials.');
+      alert(error?.response?.data?.error || 'Failed to connect. Please check your credentials.');
     } finally {
       setIsConnecting(false);
     }
@@ -55,6 +69,11 @@ export const StoreIntegration: React.FC = () => {
 
   const openModal = (type: 'Shopify' | 'WordPress') => {
     setModalType(type);
+    setStoreUrl('');
+    setClientId('');
+    setClientSecret('');
+    setConsumerKey('');
+    setConsumerSecret('');
     setShowModal(true);
   };
 
@@ -130,7 +149,7 @@ export const StoreIntegration: React.FC = () => {
                 <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
                   <Globe className="w-5 h-5 text-muted-foreground group-hover:text-primary" />
                 </div>
-                <span className="text-sm font-medium text-muted-foreground">Connect Custom WP</span>
+                <span className="text-sm font-medium text-muted-foreground">Connect WooCommerce</span>
               </button>
             </div>
           </div>
@@ -212,7 +231,7 @@ export const StoreIntegration: React.FC = () => {
                 <CardDescription>
                   {modalType === 'Shopify' 
                     ? 'Enter your Shopify store domain to begin the secure integration.'
-                    : 'Enter your WordPress site URL and install the Scalefy Plugin.'}
+                    : 'Enter your WordPress/WooCommerce site URL and API credentials.'}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -227,44 +246,82 @@ export const StoreIntegration: React.FC = () => {
                         type="text" 
                         placeholder={modalType === 'Shopify' ? 'your-store.myshopify.com' : 'https://yourwebsite.com'} 
                         className="w-full bg-background border border-white/10 rounded-xl py-3 pl-10 pr-4 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all"
-                        value={shopUrl}
-                        onChange={(e) => setShopUrl(e.target.value)}
+                        value={storeUrl}
+                        onChange={(e) => setStoreUrl(e.target.value)}
                         autoFocus
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold text-muted-foreground uppercase">
-                      Client ID
-                    </label>
-                    <div className="relative">
-                      <Plus className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <input 
-                        type="text" 
-                        placeholder="Enter Client ID" 
-                        className="w-full bg-background border border-white/10 rounded-xl py-3 pl-10 pr-4 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all"
-                        value={clientId}
-                        onChange={(e) => setClientId(e.target.value)}
-                      />
-                    </div>
-                  </div>
+                  {modalType === 'Shopify' ? (
+                    <>
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold text-muted-foreground uppercase">
+                          Client ID
+                        </label>
+                        <div className="relative">
+                          <Plus className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <input 
+                            type="text" 
+                            placeholder="Enter Client ID" 
+                            className="w-full bg-background border border-white/10 rounded-xl py-3 pl-10 pr-4 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all"
+                            value={clientId}
+                            onChange={(e) => setClientId(e.target.value)}
+                          />
+                        </div>
+                      </div>
 
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold text-muted-foreground uppercase">
-                      Client Secret
-                    </label>
-                    <div className="relative">
-                      <CheckCircle2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <input 
-                        type="password" 
-                        placeholder="Enter Client Secret" 
-                        className="w-full bg-background border border-white/10 rounded-xl py-3 pl-10 pr-4 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all"
-                        value={clientSecret}
-                        onChange={(e) => setClientSecret(e.target.value)}
-                      />
-                    </div>
-                  </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold text-muted-foreground uppercase">
+                          Client Secret
+                        </label>
+                        <div className="relative">
+                          <CheckCircle2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <input 
+                            type="password" 
+                            placeholder="Enter Client Secret" 
+                            className="w-full bg-background border border-white/10 rounded-xl py-3 pl-10 pr-4 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all"
+                            value={clientSecret}
+                            onChange={(e) => setClientSecret(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold text-muted-foreground uppercase">
+                          Consumer Key
+                        </label>
+                        <div className="relative">
+                          <Plus className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <input 
+                            type="text" 
+                            placeholder="ck_xxxxxxxxxxxxxxxx" 
+                            className="w-full bg-background border border-white/10 rounded-xl py-3 pl-10 pr-4 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all"
+                            value={consumerKey}
+                            onChange={(e) => setConsumerKey(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold text-muted-foreground uppercase">
+                          Consumer Secret
+                        </label>
+                        <div className="relative">
+                          <CheckCircle2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <input 
+                            type="password" 
+                            placeholder="cs_xxxxxxxxxxxxxxxx" 
+                            className="w-full bg-background border border-white/10 rounded-xl py-3 pl-10 pr-4 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all"
+                            value={consumerSecret}
+                            onChange={(e) => setConsumerSecret(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
 
                   <Button type="submit" className="w-full h-12" disabled={isConnecting}>
                     {isConnecting ? (

@@ -2,8 +2,22 @@ import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:5000/api';
 
+export const storeApi = {
+  connect: async (data: { shopUrl: string; clientId?: string; clientSecret?: string; platform: string; consumerKey?: string; consumerSecret?: string }) => {
+    const response = await axios.post(`${API_BASE_URL}/stores/connect`, data);
+    return response.data;
+  },
+  getAll: async () => {
+    const response = await axios.get(`${API_BASE_URL}/stores`);
+    return response.data;
+  },
+  delete: async (id: string) => {
+    const response = await axios.delete(`${API_BASE_URL}/stores/${id}`);
+    return response.data;
+  }
+};
+
 export const orderApi = {
-  // Simulate fetching Shopify orders
   fetchShopifyOrders: async () => {
     const response = await axios.get(`${API_BASE_URL}/orders`);
     return response.data;
@@ -15,16 +29,8 @@ export const orderApi = {
   },
 
   fetchOrdersByStore: async (storeId: string, platform: string) => {
-    // In production, the backend would handle the specific platform logic
     const response = await axios.get(`${API_BASE_URL}/orders`, {
       params: { storeId, platform }
-    });
-    return response.data;
-  },
-
-  connectShopify: async (shopUrl: string, clientId: string, clientSecret: string) => {
-    const response = await axios.post(`${API_BASE_URL}/stores/connect`, {
-      shopUrl, clientId, clientSecret
     });
     return response.data;
   }
@@ -101,6 +107,37 @@ export const messengerApi = {
   },
   getConversation: async (chatId: string) => {
     const response = await axios.get(`${API_BASE_URL}/messenger/conversations/${chatId}`);
+    return response.data;
+  }
+};
+
+export const messagingApi = {
+  getConversations: async () => {
+    const response = await axios.get(`${API_BASE_URL}/messaging/conversations`);
+    return response.data;
+  },
+  getConversation: async (id: string) => {
+    const response = await axios.get(`${API_BASE_URL}/messaging/conversations/${id}`);
+    return response.data;
+  },
+  searchConversations: async (query: string) => {
+    const response = await axios.get(`${API_BASE_URL}/messaging/conversations/search?q=${query}`);
+    return response.data;
+  },
+  takeOver: async (id: string, adminId: string = 'admin') => {
+    const response = await axios.post(`${API_BASE_URL}/messaging/conversations/${id}/takeover`, { admin_id: adminId });
+    return response.data;
+  },
+  returnToAI: async (id: string) => {
+    const response = await axios.post(`${API_BASE_URL}/messaging/conversations/${id}/return-to-ai`);
+    return response.data;
+  },
+  sendMessage: async (id: string, message: string, senderName: string = 'Support Team') => {
+    const response = await axios.post(`${API_BASE_URL}/messaging/conversations/${id}/message`, { message, sender_name: senderName });
+    return response.data;
+  },
+  getStats: async () => {
+    const response = await axios.get(`${API_BASE_URL}/messaging/stats`);
     return response.data;
   }
 };
