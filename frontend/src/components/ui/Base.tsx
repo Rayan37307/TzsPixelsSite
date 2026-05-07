@@ -93,15 +93,29 @@ export const Badge: React.FC<BadgeProps> = ({ children, variant = 'default', cla
   };
 
   return (
-    <div 
+    <div
       className={cn(
         "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent",
         variants[variant],
         className
-      )} 
+      )}
       {...props}
     >
       {children}
     </div>
+  );
+};
+
+interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {}
+
+export const Input: React.FC<InputProps> = ({ className, ...props }) => {
+  return (
+    <input
+      className={cn(
+        "flex h-10 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50",
+        className
+      )}
+      {...props}
+    />
   );
 };

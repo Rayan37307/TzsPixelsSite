@@ -1,11 +1,11 @@
 import { Router } from 'express';
-import { getAllConversations, getConversationById } from '../services/n8nChatService';
+import * as db from '../services/messaging/conversationDb';
 
 const router = Router();
 
 router.get('/conversations', async (req, res) => {
   try {
-    const conversations = await getAllConversations();
+    const conversations = await db.getAllConversations();
     res.json(conversations);
   } catch (error: any) {
     console.error('Failed to fetch conversations:', error.message);
@@ -13,14 +13,15 @@ router.get('/conversations', async (req, res) => {
   }
 });
 
-router.get('/conversations/:chatId', async (req, res) => {
+router.get('/conversations/:id', async (req, res) => {
   try {
-    const { chatId } = req.params;
-    const conversation = await getConversationById(chatId);
+    const { id } = req.params;
+    const conversation = await db.getConversationById(id);
     if (!conversation) {
       return res.status(404).json({ error: 'Conversation not found' });
     }
-    res.json(conversation);
+    const messages = await db.getConversationMessages(conversation.id);
+    res.json({ ...conversation, messages: messages.rows });
   } catch (error: any) {
     console.error('Failed to fetch conversation:', error.message);
     res.status(500).json({ error: 'Failed to fetch conversation' });
