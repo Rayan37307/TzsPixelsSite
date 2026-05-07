@@ -21,7 +21,6 @@ import { useUIStore } from '../store';
 const menuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
   { icon: ShoppingBag, label: 'Orders', path: '/orders' },
-  { icon: Store, label: 'Stores', path: '/stores' },
   { icon: ShieldAlert, label: 'Fraud Detection', path: '/fraud' },
   { icon: MessageSquareCode, label: 'Bot Studio', path: '/bots' },
   { icon: MessageCircle, label: 'Messenger', path: '/messenger' },
