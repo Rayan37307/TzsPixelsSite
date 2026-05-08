@@ -33,6 +33,16 @@ export const orderApi = {
       params: { storeId, platform }
     });
     return response.data;
+  },
+
+  createOrder: async (orderData: any) => {
+    const response = await axios.post(`${API_BASE_URL}/orders/create`, orderData);
+    return response.data;
+  },
+
+  getProducts: async () => {
+    const response = await axios.get(`${API_BASE_URL}/orders/products`);
+    return response.data;
   }
 };
 

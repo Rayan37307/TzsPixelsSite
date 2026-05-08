@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Search, 
   Filter, 
@@ -17,12 +17,46 @@ import { Card, Badge, Button } from '../components/ui/Base';
 import { cn } from '../utils/cn';
 import { useOrders } from '../hooks/useOrders';
 import { useStoreStore } from '../store/useStoreStore';
+import { orderApi } from '../services/api';
 
 export const OrderManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [products, setProducts] = useState<any[]>([]);
+  const [isCreating, setIsCreating] = useState(false);
   const { orders, isLoading, isSyncing, syncShopify } = useOrders();
-  // Note: store store available via useStoreStore() hook
-  void useStoreStore(); // suppress unused warning for future use
+  void useStoreStore();
+
+  const [formData, setFormData] = useState({
+    customerName: '',
+    phone: '',
+    address: '',
+    city: '',
+    email: '',
+    productName: '',
+    quantity: 1
+  });
+
+  useEffect(() => {
+    if (showCreateModal) {
+      orderApi.getProducts().then(setProducts).catch(console.error);
+    }
+  }, [showCreateModal]);
+
+  const handleCreateOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsCreating(true);
+    try {
+      await orderApi.createOrder(formData);
+      setShowCreateModal(false);
+      setFormData({ customerName: '', phone: '', address: '', city: '', email: '', productName: '', quantity: 1 });
+      syncShopify();
+    } catch (err) {
+      console.error('Failed to create order:', err);
+    } finally {
+      setIsCreating(false);
+    }
+  };
 
   const handleSync = () => {
     syncShopify();
@@ -48,7 +82,7 @@ export const OrderManagement: React.FC = () => {
           <Button variant="outline" className="gap-2">
             <Download className="w-4 h-4" /> Export
           </Button>
-          <Button className="gap-2">
+          <Button className="gap-2" onClick={() => setShowCreateModal(true)}>
             <Plus className="w-4 h-4" /> Create Order
           </Button>
         </div>
@@ -180,6 +214,103 @@ export const OrderManagement: React.FC = () => {
            </div>
         </div>
       </Card>
+
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
+          <Card className="w-full max-w-lg">
+            <h2 className="text-xl font-bold text-white mb-6">Create New Order</h2>
+            <form onSubmit={handleCreateOrder} className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">Customer Name</label>
+                <input 
+                  type="text" 
+                  required
+                  value={formData.customerName}
+                  onChange={e => setFormData({...formData, customerName: e.target.value})}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white outline-none focus:ring-1 focus:ring-primary"
+                  placeholder="John Doe"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">Phone</label>
+                <input 
+                  type="tel" 
+                  required
+                  value={formData.phone}
+                  onChange={e => setFormData({...formData, phone: e.target.value})}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white outline-none focus:ring-1 focus:ring-primary"
+                  placeholder="01xxxxxxxxx"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">Product</label>
+                <select 
+                  required
+                  value={formData.productName}
+                  onChange={e => setFormData({...formData, productName: e.target.value})}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white outline-none focus:ring-1 focus:ring-primary"
+                >
+                  <option value="" className="bg-gray-900">Select a product</option>
+                  {products.map((p: any) => (
+                    <option key={p.id} value={p.name} className="bg-gray-900">
+                      {p.name} - {p.price || 'N/A'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">Quantity</label>
+                  <input 
+                    type="number" 
+                    min="1"
+                    value={formData.quantity}
+                    onChange={e => setFormData({...formData, quantity: parseInt(e.target.value) || 1})}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">City</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={formData.city}
+                    onChange={e => setFormData({...formData, city: e.target.value})}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white outline-none focus:ring-1 focus:ring-primary"
+                    placeholder="Dhaka"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">Address</label>
+                <textarea 
+                  required
+                  value={formData.address}
+                  onChange={e => setFormData({...formData, address: e.target.value})}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white outline-none focus:ring-1 focus:ring-primary h-20 resize-none"
+                  placeholder="Full delivery address"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">Email (Optional)</label>
+                <input 
+                  type="email" 
+                  value={formData.email}
+                  onChange={e => setFormData({...formData, email: e.target.value})}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white outline-none focus:ring-1 focus:ring-primary"
+                  placeholder="customer@example.com"
+                />
+              </div>
+              <div className="flex gap-3 pt-4">
+                <Button type="button" variant="ghost" className="flex-1" onClick={() => setShowCreateModal(false)}>Cancel</Button>
+                <Button type="submit" className="flex-1" disabled={isCreating}>
+                  {isCreating ? 'Creating...' : 'Create Order'}
+                </Button>
+              </div>
+            </form>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };

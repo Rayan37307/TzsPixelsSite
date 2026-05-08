@@ -120,27 +120,48 @@ export class WooCommerceService {
     }
   }
 
+  static async findProductId(productName: string): Promise<number> {
+    const products = await this.getProducts();
+    const matched = products.find((p: any) => 
+      p.name.toLowerCase().includes(productName.toLowerCase())
+    );
+    if (!matched) {
+      throw new Error(`Product not found: ${productName}`);
+    }
+    console.log('[WooCommerce] Found product:', matched.name, '| ID:', matched.id);
+    return matched.id;
+  }
+
   static async createOrder(orderData: any) {
     const store = this.primaryStore;
     if (!store) {
       throw new Error('No WooCommerce store configured');
     }
 
-    const response = await axios.post(
-      `${store.url}/wp-json/wc/v3/orders`,
-      orderData,
-      this.getAuthConfig(store)
-    );
+    console.log('[WooCommerce] createOrder - URL:', `${store.url}/wp-json/wc/v3/orders`);
+    console.log('[WooCommerce] createOrder - Auth:', { username: store.consumerKey, hasPassword: !!store.consumerSecret });
+    console.log('[WooCommerce] createOrder - Payload:', JSON.stringify(orderData, null, 2));
 
-    const order = response.data;
-    await NotificationService.addNotification({
-      type: 'order',
-      title: 'New Order Received',
-      message: `${order.billing.first_name || 'A customer'} just placed an order for ${order.currency} ${order.total}.`,
-      time: 'Just now'
-    });
+    try {
+      const response = await axios.post(
+        `${store.url}/wp-json/wc/v3/orders`,
+        orderData,
+        this.getAuthConfig(store)
+      );
 
-    return order;
+      const order = response.data;
+      await NotificationService.addNotification({
+        type: 'order',
+        title: 'New Order Received',
+        message: `${order.billing.first_name || 'A customer'} just placed an order for ${order.currency} ${order.total}.`,
+        time: 'Just now'
+      });
+
+      return order;
+    } catch (error: any) {
+      console.error('[WooCommerce] createOrder error:', error.response?.data || error.message);
+      throw error;
+    }
   }
 
   static async updateOrder(orderId: string, updateData: any) {

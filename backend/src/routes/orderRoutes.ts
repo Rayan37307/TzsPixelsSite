@@ -83,4 +83,71 @@ router.post('/simulate', async (req, res) => {
   }
 });
 
+// POST /api/orders/create - Create order in WooCommerce or Shopify
+router.post('/create', async (req, res) => {
+  try {
+    const { customerName, phone, address, city, email, productName, quantity } = req.body;
+
+    if (!customerName || !phone || !address || !city || !productName || !quantity) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const cms = getCMS();
+    let order;
+
+    console.log('[CreateOrder] CMS:', cms);
+    console.log('[CreateOrder] Input:', { customerName, phone, address, city, email, productName, quantity });
+
+    if (cms === 'wordpress' || cms === 'woocommerce') {
+      const productId = await WooCommerceService.findProductId(productName);
+      
+      const wooOrderData = {
+        billing: {
+          first_name: customerName.split(' ')[0],
+          last_name: customerName.split(' ').slice(1).join(' ') || '',
+          email: email || '',
+          phone: phone,
+          address_1: address,
+          city: city,
+          country: 'BD'
+        },
+        line_items: [
+          {
+            product_id: productId,
+            quantity: parseInt(quantity)
+          }
+        ],
+        status: 'processing'
+      };
+      
+      console.log('[CreateOrder] WooCommerce payload:', JSON.stringify(wooOrderData, null, 2));
+      
+      order = await WooCommerceService.createOrder(wooOrderData);
+    } else {
+      order = await ShopifyService.createOrder({
+        line_items: [
+          {
+            title: productName,
+            quantity: parseInt(quantity)
+          }
+        ],
+        billing_address: {
+          first_name: customerName.split(' ')[0],
+          last_name: customerName.split(' ').slice(1).join(' ') || '',
+          address1: address,
+          city: city,
+          country: 'Bangladesh'
+        },
+        email: email || '',
+        phone: phone
+      });
+    }
+
+    res.json({ success: true, order });
+  } catch (error: any) {
+    console.error('Create order error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export const orderRoutes = router;
