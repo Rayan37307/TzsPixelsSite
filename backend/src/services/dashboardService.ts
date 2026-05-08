@@ -42,8 +42,15 @@ export class DashboardService {
     try {
       let orders: any[] = [];
       
+      console.log('[Dashboard] isCMSConfigured:', isCMSConfigured());
+      
       if (isCMSConfigured()) {
         orders = await fetchOrders();
+      }
+      
+      console.log('[Dashboard] Raw orders count:', orders.length);
+      if (orders.length > 0) {
+        console.log('[Dashboard] Sample order:', JSON.stringify(orders[0]));
       }
       
       // Calculate basic stats
@@ -74,6 +81,8 @@ export class DashboardService {
         // Parse amount (expecting "CURRENCY VALUE")
         const amountMatch = order.amount.match(/(\d+\.?\d*)/);
         const amount = amountMatch ? parseFloat(amountMatch[1]) : 0;
+        
+        console.log('[Dashboard] Parsing order:', order.id, 'amount:', order.amount, '-> parsed:', amount, 'status:', order.status);
         
         totalRevenue += amount;
         
