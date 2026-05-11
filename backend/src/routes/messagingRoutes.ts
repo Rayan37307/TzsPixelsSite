@@ -3,8 +3,18 @@ import * as db from '../services/messaging/conversationDb';
 import { query } from '../config/db';
 import { ConversationOrchestrator } from '../services/messaging/ConversationOrchestrator';
 import { FacebookAdapter } from '../services/messaging/FacebookAdapter';
+import { ChatbotService } from '../services/chatbot/ChatbotService';
 
 const router = Router();
+
+// Subscribe to feed webhooks on startup
+if (FacebookAdapter.isConfigured()) {
+  setTimeout(() => {
+    FacebookAdapter.subscribeToFeed().then(success => {
+      console.log('[Startup] Feed subscription:', success ? 'SUCCESS' : 'FAILED');
+    });
+  }, 3000);
+}
 
 // ==================== WEBHOOK ====================
 
@@ -27,18 +37,23 @@ router.get('/webhooks/facebook', (req: Request, res: Response) => {
 
 // Facebook Webhook Message Handler (POST)
 router.post('/webhooks/facebook', async (req: Request, res: Response) => {
-  console.log('[Webhook] Facebook message received');
+  console.log('[Webhook] Facebook event received');
   
   try {
     const body = req.body;
+    console.log('[Webhook] Full body:', JSON.stringify(body).substring(0, 1000));
     
     if (body.object === 'page') {
-      // Send 200 immediately
       res.status(200).send('OK');
       
-      // Process each entry
+      console.log('[Webhook] Entry count:', body.entry?.length || 0);
+      
       for (const entry of body.entry || []) {
+        console.log('[Webhook] Entry:', JSON.stringify(entry).substring(0, 500));
+        
+        // Handle messaging events (direct messages)
         for (const messaging of entry.messaging || []) {
+          console.log('[Webhook] Messaging:', JSON.stringify(messaging).substring(0, 300));
           const senderId = messaging.sender?.id;
           const messageText = messaging.message?.text;
           const messageId = messaging.message?.mid;
@@ -48,9 +63,49 @@ router.post('/webhooks/facebook', async (req: Request, res: Response) => {
             await ConversationOrchestrator.handleIncomingMessage(senderId, messageText, messageId);
           }
         }
+
+        // Handle feed events (comments on posts)
+        if (entry.changes) {
+          console.log('[Webhook] Changes:', JSON.stringify(entry.changes).substring(0, 500));
+          for (const change of entry.changes || []) {
+            console.log('[Webhook] Change:', JSON.stringify(change));
+            
+            if (change.field === 'feed' && (change.value.comment_id || change.value.message)) {
+              const commentId = change.value.comment_id;
+              const messageText = change.value.message;
+              const commenterId = change.value.from?.id;
+              const pagePostId = change.value.post_id;
+
+              console.log(`[Webhook] Comment received:`, { commentId, messageText, commenterId, pagePostId: pagePostId?.toString().slice(-20) });
+
+              if (commentId && messageText) {
+                console.log(`[Webhook] Processing comment reply for: ${commentId}`);
+                
+                const commenterName = change.value.from?.name || 'Facebook User';
+                
+                const aiResponse = await ChatbotService.processMessage(
+                  { conversationId: `fb_comment_${commentId}`, platformUserId: commenterId, customerName: commenterName },
+                  messageText
+                );
+                
+                console.log(`[Webhook] AI response:`, aiResponse);
+                
+                const replyResult = await FacebookAdapter.replyToComment(commentId, aiResponse);
+                
+                if (replyResult.success) {
+                  console.log(`[Webhook] Comment reply sent successfully`);
+                } else {
+                  console.log(`[Webhook] Comment reply failed`);
+                }
+              }
+            } else {
+              console.log(`[Webhook] Skipping change:`, { field: change.field, hasCommentId: !!change.value?.comment_id, hasMessage: !!change.value?.message });
+            }
+          }
+        }
       }
     } else {
-      console.log('[Webhook] Unknown object type');
+      console.log('[Webhook] Unknown object type:', body.object);
     }
   } catch (error: any) {
     console.error('[Webhook] Error:', error.message);

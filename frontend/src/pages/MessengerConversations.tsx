@@ -300,6 +300,10 @@ export const MessengerConversations: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    <Button size="sm" variant="ghost" onClick={() => setSelectedConversation(null)} className="gap-1">
+                      <ArrowLeft className="w-4 h-4" />
+                      Back
+                    </Button>
                     {selectedConversation.ai_mode ? (
                       <Button size="sm" variant="outline" onClick={handleTakeOver} className="gap-1">
                         <Hand className="w-4 h-4" />

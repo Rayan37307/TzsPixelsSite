@@ -176,4 +176,76 @@ export class FacebookAdapter {
     const verifyToken = process.env.FB_VERIFY_TOKEN || 'your_verify_token';
     return mode === 'subscribe' && token === verifyToken;
   }
+
+  static async replyToComment(commentId: string, message: string): Promise<{ id: string; success: boolean }> {
+    if (!this.isConfigured()) {
+      throw new Error('Facebook adapter not configured');
+    }
+
+    try {
+      console.log('[Facebook] Replying to comment:', commentId);
+
+      const response = await axios.post(
+        `https://graph.facebook.com/v21.0/${commentId}/private_replies`,
+        {
+          message: message
+        },
+        {
+          params: { access_token: this.ACCESS_TOKEN }
+        }
+      );
+
+      console.log('[Facebook] Comment reply success:', response.data.id);
+      return { id: response.data.id, success: true };
+    } catch (error: any) {
+      console.error('[Facebook] Comment reply error:', error.response?.data || error.message);
+      return { id: '', success: false };
+    }
+  }
+
+  static async getComment(commentId: string): Promise<any> {
+    if (!this.isConfigured()) {
+      throw new Error('Facebook adapter not configured');
+    }
+
+    try {
+      const response = await axios.get(
+        `https://graph.facebook.com/v21.0/${commentId}`,
+        {
+          params: { access_token: this.ACCESS_TOKEN }
+        }
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error('[Facebook] Get comment error:', error.response?.data || error.message);
+      return null;
+    }
+  }
+
+  static async subscribeToFeed(): Promise<boolean> {
+    if (!this.isConfigured()) {
+      console.log('[Facebook] Not configured, cannot subscribe to feed');
+      return false;
+    }
+
+    try {
+      console.log('[Facebook] Subscribing to feed field for page:', this.PAGE_ID);
+      
+      const response = await axios.post(
+        `https://graph.facebook.com/v21.0/${this.PAGE_ID}/subscribed_apps`,
+        {
+          subscribed_fields: 'feed'
+        },
+        {
+          params: { access_token: this.ACCESS_TOKEN }
+        }
+      );
+
+      console.log('[Facebook] Subscribe result:', response.data);
+      return true;
+    } catch (error: any) {
+      console.error('[Facebook] Subscribe error:', error.response?.data || error.message);
+      return false;
+    }
+  }
 }
