@@ -6,7 +6,6 @@ import {
   ShieldAlert, 
   MessageSquareCode, 
   UserX, 
-  Truck, 
   Bell, 
   Settings,
   ChevronLeft,
@@ -25,7 +24,6 @@ const menuItems = [
   { icon: MessageSquareCode, label: 'Bot Studio', path: '/bots' },
   { icon: MessageCircle, label: 'Messenger', path: '/messenger' },
   { icon: UserX, label: 'Abandoned', path: '/abandoned' },
-  { icon: Truck, label: 'Courier', path: '/courier' },
   { icon: Bell, label: 'Notifications', path: '/notifications' },
   { icon: Settings, label: 'Settings', path: '/settings' },
 ];

@@ -7,40 +7,43 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: "#0a0a0a",
+        background: "#050507",
         foreground: "#ffffff",
         card: {
-          DEFAULT: "#141414",
+          DEFAULT: "#0f1117",
           foreground: "#ffffff",
         },
         popover: {
-          DEFAULT: "#141414",
+          DEFAULT: "#0f1117",
           foreground: "#ffffff",
         },
         primary: {
-          DEFAULT: "#99f6e4", // Teal/Cyan highlight from screenshot
-          foreground: "#000000",
+          DEFAULT: "#8b5cf6", // Vibrant Purple
+          foreground: "#ffffff",
         },
         secondary: {
-          DEFAULT: "#262626",
+          DEFAULT: "#161923",
           foreground: "#ffffff",
         },
         muted: {
-          DEFAULT: "#262626",
-          foreground: "#a3a3a3",
+          DEFAULT: "#161923",
+          foreground: "#71717a",
         },
         accent: {
-          DEFAULT: "#262626",
+          DEFAULT: "#1e1e2e",
           foreground: "#ffffff",
         },
-        border: "#262626",
-        input: "#262626",
-        ring: "#99f6e4",
+        border: "rgba(255, 255, 255, 0.05)",
+        input: "rgba(255, 255, 255, 0.05)",
+        ring: "#8b5cf6",
       },
       borderRadius: {
-        lg: "1rem",
-        md: "0.75rem",
-        sm: "0.5rem",
+        "3xl": "1.5rem",
+        "2xl": "1.25rem",
+        xl: "1rem",
+        lg: "0.75rem",
+        md: "0.5rem",
+        sm: "0.25rem",
       },
       fontFamily: {
         sans: ["Inter", "system-ui", "sans-serif"],

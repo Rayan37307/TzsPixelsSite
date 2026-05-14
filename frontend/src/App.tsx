@@ -8,7 +8,7 @@ import { StoreIntegration } from './pages/StoreIntegration';
 import { FraudDetection } from './pages/FraudDetection';
 import { AIAssistant } from './pages/AIAssistant';
 import { AbandonedCheckout } from './pages/AbandonedCheckout';
-import { CourierSupport } from './pages/CourierSupport';
+// import { CourierSupport } from './pages/CourierSupport';
 import { NotificationsCenter } from './pages/NotificationsCenter';
 import { BotManagement } from './pages/BotManagement';
 import { MessengerConversations } from './pages/MessengerConversations';
@@ -30,7 +30,7 @@ const App: React.FC = () => {
             <Route path="/fraud" element={<FraudDetection />} />
             <Route path="/ai" element={<AIAssistant />} />
             <Route path="/abandoned" element={<AbandonedCheckout />} />
-            <Route path="/courier" element={<CourierSupport />} />
+            {/* <Route path="/courier" element={<CourierSupport />} /> */}
             <Route path="/notifications" element={<NotificationsCenter />} />
             <Route path="/bots" element={<BotManagement />} />
             <Route path="/messenger" element={<MessengerConversations />} />
