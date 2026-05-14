@@ -7,7 +7,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: "#050507",
+        background: "#000000",
         foreground: "#ffffff",
         card: {
           DEFAULT: "#0f1117",
@@ -46,7 +46,7 @@ export default {
         sm: "0.25rem",
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
+        sans: ["'Plus Jakarta Sans'", "Inter", "system-ui", "sans-serif"],
       },
     },
   },

@@ -9,17 +9,17 @@ export const DashboardLayout: React.FC = () => {
   const { sidebarOpen } = useUIStore();
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary/30 selection:text-primary">
+    <div className="min-h-screen bg-black text-foreground font-sans selection:bg-primary/30 selection:text-primary">
       <Sidebar />
       <div 
         className={cn(
-          "transition-all duration-300 min-h-screen flex flex-col",
-          sidebarOpen ? "pl-64" : "pl-20"
+          "transition-all duration-500 min-h-screen flex flex-col",
+          sidebarOpen ? "pl-[280px]" : "pl-24"
         )}
       >
         <Navbar />
-        <main className="flex-1 p-8 overflow-y-auto">
-          <div className="max-w-7xl mx-auto">
+        <main className="flex-1 px-8 pb-8 overflow-y-auto">
+          <div className="max-w-[1600px] mx-auto">
             <Outlet />
           </div>
         </main>

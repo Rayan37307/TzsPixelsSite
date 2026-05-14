@@ -8,12 +8,15 @@ import {
   Layout,
   Globe,
   Trash2,
-  X
+  X,
+  Zap,
+  ShieldCheck,
+  Package
 } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, Badge, Button } from '../components/ui/Base';
+import { Card, Badge, Button } from '../components/ui/Base';
 import { useStoreStore } from '../store/useStoreStore';
 import { cn } from '../utils/cn';
-import { storeApi, orderApi } from '../services/api';
+import { storeApi } from '../services/api';
 
 export const StoreIntegration: React.FC = () => {
   const { stores, addStore, removeStore, syncStore } = useStoreStore();
@@ -78,260 +81,291 @@ export const StoreIntegration: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between">
+    <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-1000 pb-20">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">Store Integration</h1>
-          <p className="text-muted-foreground mt-1">Connect and sync your ecommerce platforms.</p>
+          <h1 className="text-4xl font-black text-white tracking-tight italic">Store <span className="text-primary not-italic">Integration</span></h1>
+          <p className="text-muted-foreground mt-2 font-medium tracking-wide uppercase text-[10px] tracking-[0.2em]">Synchronized Commerce Nodes</p>
+        </div>
+        <div className="flex gap-4">
+           <Button variant="secondary" className="h-12 px-6 rounded-xl font-black text-[10px] uppercase tracking-widest border-white/5 gap-2">
+              <Zap className="w-4 h-4" /> Global Refresh
+           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
         {/* Stores List */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="lg:col-span-2 space-y-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {stores.map((store) => (
-              <Card key={store.id} className="relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-4 flex gap-2">
-                  <Badge variant={store.status === 'Connected' ? 'success' : 'warning'}>
+              <Card key={store.id} className="relative overflow-hidden group bg-[#0d0d0d] border-white/[0.05] rounded-[2.5rem] p-8 transition-all duration-500 hover:border-primary/30">
+                <div className="absolute top-0 right-0 p-6 flex gap-3 translate-x-2 group-hover:translate-x-0 transition-transform">
+                  <Badge variant={store.status === 'Connected' ? 'success' : 'warning'} className="h-6 rounded-md text-[8px] font-black uppercase tracking-widest">
                     {store.status}
                   </Badge>
                   <button 
                     onClick={() => removeStore(store.id)}
-                    className="p-1 rounded bg-red-500/10 text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="p-2 rounded-lg bg-red-500/5 text-red-400 border border-red-500/10 opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500/20"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
-                <CardHeader>
-                  <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center mb-4 text-xl">
-                    {store.platform === 'Shopify' ? '🛍️' : store.platform === 'WordPress' ? '🌐' : '🛒'}
-                  </div>
-                  <CardTitle>{store.name}</CardTitle>
-                  <CardDescription className="flex items-center gap-1">
-                    {store.url} <ExternalLink className="w-3 h-3" />
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between mt-4 py-3 border-t border-white/5">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <RefreshCw className={cn("w-3 h-3", store.status === 'Syncing' && "animate-spin")} />
-                      Last sync: {store.lastSync}
-                    </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => syncStore(store.id)}
-                      disabled={store.status === 'Syncing'}
-                    >
-                      Sync
-                    </Button>
-                  </div>
-                </CardContent>
+
+                <div className="space-y-6">
+                   <div className="w-16 h-16 rounded-[1.5rem] bg-white/[0.03] border border-white/5 flex items-center justify-center text-3xl shadow-2xl transition-transform group-hover:scale-110">
+                     {store.platform === 'Shopify' ? '🛍️' : store.platform === 'WordPress' ? '🌐' : '🛒'}
+                   </div>
+                   
+                   <div>
+                      <h3 className="text-xl font-black text-white italic tracking-tight">{store.name}</h3>
+                      <div className="flex items-center gap-2 mt-1 text-[10px] font-black text-muted-foreground uppercase tracking-widest opacity-60">
+                         <Globe className="w-3 h-3" /> {store.url}
+                      </div>
+                   </div>
+
+                   <div className="flex items-center justify-between pt-6 border-t border-white/[0.03]">
+                      <div className="flex items-center gap-2 text-[10px] font-black text-muted-foreground uppercase tracking-widest opacity-50">
+                        <RefreshCw className={cn("w-3 h-3", store.status === 'Syncing' && "animate-spin")} />
+                        Last sync: {store.lastSync}
+                      </div>
+                      <Button 
+                        variant="secondary" 
+                        size="sm" 
+                        className="h-9 px-5 rounded-xl font-black text-[9px] uppercase tracking-widest border-white/5"
+                        onClick={() => syncStore(store.id)}
+                        disabled={store.status === 'Syncing'}
+                      >
+                        Push Sync
+                      </Button>
+                   </div>
+                </div>
               </Card>
             ))}
             
-            <div className="grid grid-cols-1 gap-3">
+            <div className="grid grid-cols-1 gap-4">
                <button 
                 onClick={() => openModal('Shopify')}
-                className="border-2 border-dashed border-white/5 rounded-2xl p-6 flex flex-col items-center justify-center gap-3 hover:bg-white/[0.02] transition-colors group"
+                className="group relative h-[140px] bg-white/[0.01] border-2 border-dashed border-white/5 rounded-[2rem] flex flex-col items-center justify-center gap-3 hover:bg-white/[0.03] hover:border-primary/30 transition-all duration-500"
                >
-                <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                  <Plus className="w-5 h-5 text-muted-foreground group-hover:text-primary" />
+                <div className="w-12 h-12 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-center group-hover:bg-primary/10 group-hover:border-primary/20 transition-all">
+                  <Plus className="w-6 h-6 text-muted-foreground group-hover:text-primary" />
                 </div>
-                <span className="text-sm font-medium text-muted-foreground">Connect Shopify</span>
+                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] group-hover:text-white transition-colors">Initialize Shopify</span>
               </button>
               
               <button 
                 onClick={() => openModal('WordPress')}
-                className="border-2 border-dashed border-white/5 rounded-2xl p-6 flex flex-col items-center justify-center gap-3 hover:bg-white/[0.02] transition-colors group"
+                className="group relative h-[140px] bg-white/[0.01] border-2 border-dashed border-white/5 rounded-[2rem] flex flex-col items-center justify-center gap-3 hover:bg-white/[0.03] hover:border-primary/30 transition-all duration-500"
               >
-                <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                  <Globe className="w-5 h-5 text-muted-foreground group-hover:text-primary" />
+                <div className="w-12 h-12 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-center group-hover:bg-primary/10 group-hover:border-primary/20 transition-all">
+                  <Globe className="w-6 h-6 text-muted-foreground group-hover:text-primary" />
                 </div>
-                <span className="text-sm font-medium text-muted-foreground">Connect WooCommerce</span>
+                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] group-hover:text-white transition-colors">Link WooCommerce</span>
               </button>
             </div>
           </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Manual Integration</CardTitle>
-              <CardDescription>Use our JS tracking script for custom storefronts.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="bg-black/50 rounded-xl p-4 border border-white/5 font-mono text-xs text-primary overflow-x-auto">
-                {`<script src="https://cdn.scalefy.ai/v1/pixel.js" data-id="SK_LIVE_9921"></script>`}
+          <Card className="bg-[#0d0d0d] border-white/[0.05] rounded-[2.5rem] p-10 overflow-hidden relative">
+            <div className="absolute top-0 right-0 p-10 opacity-5">
+               <Copy className="w-32 h-32" />
+            </div>
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-xl font-black text-white italic tracking-tight">Manual Integration</h3>
+                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">Cross-Environment Neural Bridge</p>
               </div>
-              <div className="flex items-center justify-between mt-4">
-                <p className="text-xs text-muted-foreground">Place this script inside the {`<head>`} tag of your store.</p>
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Copy className="w-3 h-3" /> Copy Script
+              
+              <div className="bg-black/60 rounded-2xl p-6 border border-white/[0.05] font-mono text-[11px] text-primary relative group">
+                <code className="break-all leading-relaxed">
+                  {`<script src="https://cdn.scalefy.ai/v1/pixel.js" data-id="SK_LIVE_9921"></script>`}
+                </code>
+                <Button variant="premium" size="sm" className="absolute top-4 right-4 h-8 px-4 rounded-lg font-black text-[8px] uppercase tracking-widest shadow-xl shadow-primary/10 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Copy className="w-3 h-3 mr-2" /> Copy String
                 </Button>
               </div>
-            </CardContent>
+
+              <div className="flex items-center gap-4 p-4 bg-primary/5 border border-primary/10 rounded-2xl">
+                 <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="w-5 h-5 text-primary" />
+                 </div>
+                 <p className="text-[10px] font-black text-primary/80 uppercase tracking-widest leading-loose">
+                   Inject this signal vector into the <span className="text-white">&lt;head&gt;</span> block of your custom environment to activate real-time telemetry.
+                 </p>
+              </div>
+            </div>
           </Card>
         </div>
 
         {/* Integration Guides */}
-        <div className="space-y-6">
-          <Card className="bg-primary/5 border-primary/20">
-            <CardHeader>
-              <CardTitle className="text-primary flex items-center gap-2">
-                <Layout className="w-4 h-4" /> Setup Webhooks
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                To receive real-time order updates, ensure you've configured webhooks in your store admin.
+        <div className="space-y-10">
+          <Card className="bg-primary/[0.03] border-primary/20 rounded-[2.5rem] p-10 relative overflow-hidden group">
+            <div className="absolute -bottom-10 -right-10 opacity-5 transition-transform group-hover:scale-110 duration-700">
+               <Zap className="w-48 h-48 text-primary" />
+            </div>
+            <div className="space-y-8 relative">
+              <div className="flex items-center gap-4">
+                 <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
+                   <Layout className="w-6 h-6 text-primary" />
+                 </div>
+                 <h3 className="text-xl font-black text-white italic tracking-tight">Webhook Protocol</h3>
+              </div>
+              
+              <p className="text-sm font-medium text-white/60 leading-relaxed">
+                Activate real-time data streams by configuring reactive webhooks in your core commerce engine.
               </p>
-              <ul className="mt-4 space-y-3">
+
+              <div className="space-y-4">
                 {[
                   'Orders created',
                   'Orders fulfilled',
                   'Checkout abandoned',
                   'Refunds processed'
                 ].map((step) => (
-                  <li key={step} className="flex items-center gap-2 text-xs text-white font-medium">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-primary" /> {step}
-                  </li>
+                  <div key={step} className="flex items-center gap-4 group/item">
+                    <div className="w-6 h-6 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center transition-colors group-hover/item:bg-primary/20">
+                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                    </div>
+                    <span className="text-[10px] font-black text-white/80 uppercase tracking-widest">{step}</span>
+                  </div>
                 ))}
-              </ul>
-              <Button className="w-full mt-6 bg-primary text-black">Get API Key</Button>
-            </CardContent>
+              </div>
+              
+              <Button variant="premium" className="w-full h-14 rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl shadow-primary/20 mt-6">Generate Secure Key</Button>
+            </div>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Platforms</CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-3">
-              {['Shopify', 'Woo', 'Magento', 'BigCommerce', 'Wix', 'Presta'].map((p) => (
-                <div key={p} className="flex items-center gap-2 p-3 rounded-lg bg-white/5 border border-white/5 text-xs font-medium text-white cursor-pointer hover:bg-white/10">
+          <Card className="bg-[#0d0d0d] border-white/[0.05] rounded-[2.5rem] p-10">
+            <div className="flex items-center gap-4 mb-8">
+               <div className="w-10 h-10 rounded-xl bg-white/[0.03] border border-white/5 flex items-center justify-center">
+                 <Package className="w-5 h-5 text-muted-foreground" />
+               </div>
+               <h3 className="text-lg font-black text-white italic tracking-tight">Validated Vectors</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              {['Shopify', 'Woo', 'Magento', 'BigComm', 'Wix', 'Presta'].map((p) => (
+                <div key={p} className="flex items-center justify-center p-4 rounded-2xl bg-white/[0.02] border border-white/5 text-[10px] font-black text-muted-foreground uppercase tracking-widest cursor-pointer hover:bg-primary/10 hover:border-primary/20 hover:text-primary transition-all duration-300">
                   {p}
                 </div>
               ))}
-            </CardContent>
+            </div>
+          </Card>
+
+          <Card className="bg-emerald-500/[0.03] border-emerald-500/20 rounded-[2.5rem] p-8 flex items-center gap-5">
+             <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
+               <ShieldCheck className="w-6 h-6 text-emerald-500" />
+             </div>
+             <div>
+                <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Secure Sync</p>
+                <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-1">End-to-End Encryption Active</p>
+             </div>
           </Card>
         </div>
       </div>
 
       {/* Integration Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-           <Card className="w-full max-w-md border-white/10 shadow-2xl relative animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/90 backdrop-blur-xl animate-in fade-in duration-300">
+           <Card className="w-full max-w-xl bg-[#0d0d0d] border-white/[0.05] rounded-[3rem] p-10 shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-300">
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary to-transparent" />
+              
               <button 
                 onClick={() => setShowModal(false)}
-                className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-white transition-colors"
+                className="absolute top-8 right-8 w-12 h-12 rounded-full bg-white/[0.02] border border-white/5 flex items-center justify-center text-muted-foreground hover:text-white transition-colors"
               >
-                <X className="w-5 h-5" />
+                <X className="w-6 h-6" />
               </button>
-              <CardHeader>
-                <CardTitle>Connect {modalType}</CardTitle>
-                <CardDescription>
+
+              <div className="mb-10">
+                <div className="flex items-center gap-4 mb-2">
+                   <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
+                     {modalType === 'Shopify' ? <Zap className="w-6 h-6 text-primary" /> : <Globe className="w-6 h-6 text-primary" />}
+                   </div>
+                   <div>
+                     <h2 className="text-2xl font-black text-white italic tracking-tight italic">Link {modalType}</h2>
+                     <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">Authentication Sequence</p>
+                   </div>
+                </div>
+                <p className="text-sm font-medium text-white/50 leading-relaxed mt-6">
                   {modalType === 'Shopify' 
-                    ? 'Enter your Shopify store domain to begin the secure integration.'
-                    : 'Enter your WordPress/WooCommerce site URL and API credentials.'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleConnect} className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold text-muted-foreground uppercase">
-                      {modalType === 'Shopify' ? 'Store Domain' : 'Website URL'}
-                    </label>
-                    <div className="relative">
-                      <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    ? 'Enter your Shopify store designation to establish a secure neural link between our cores.'
+                    : 'Configure your WooCommerce endpoint and API secret keys for deep-level synchronization.'}
+                </p>
+              </div>
+
+              <form onSubmit={handleConnect} className="space-y-8">
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">
+                    {modalType === 'Shopify' ? 'Signal URL' : 'Base Endpoint'}
+                  </label>
+                  <div className="relative group">
+                    <Globe className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                    <input 
+                      type="text" 
+                      placeholder={modalType === 'Shopify' ? 'your-store.myshopify.com' : 'https://yourwebsite.com'} 
+                      className="w-full h-14 bg-white/[0.02] border border-white/5 rounded-[1.5rem] py-3 pl-14 pr-6 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all placeholder:text-white/10"
+                      value={storeUrl}
+                      onChange={(e) => setStoreUrl(e.target.value)}
+                      autoFocus
+                    />
+                  </div>
+                </div>
+
+                {modalType === 'Shopify' ? (
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                      <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Client Identifier</label>
                       <input 
                         type="text" 
-                        placeholder={modalType === 'Shopify' ? 'your-store.myshopify.com' : 'https://yourwebsite.com'} 
-                        className="w-full bg-background border border-white/10 rounded-xl py-3 pl-10 pr-4 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all"
-                        value={storeUrl}
-                        onChange={(e) => setStoreUrl(e.target.value)}
-                        autoFocus
+                        placeholder="ID_XXXXX" 
+                        className="w-full h-14 bg-white/[0.02] border border-white/5 rounded-[1.25rem] px-6 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all placeholder:text-white/10"
+                        value={clientId}
+                        onChange={(e) => setClientId(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-3">
+                      <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Security Secret</label>
+                      <input 
+                        type="password" 
+                        placeholder="••••••••" 
+                        className="w-full h-14 bg-white/[0.02] border border-white/5 rounded-[1.25rem] px-6 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all placeholder:text-white/10"
+                        value={clientSecret}
+                        onChange={(e) => setClientSecret(e.target.value)}
                       />
                     </div>
                   </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                      <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Consumer Vector</label>
+                      <input 
+                        type="text" 
+                        placeholder="ck_xxxxxxxx" 
+                        className="w-full h-14 bg-white/[0.02] border border-white/5 rounded-[1.25rem] px-6 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all placeholder:text-white/10"
+                        value={consumerKey}
+                        onChange={(e) => setConsumerKey(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-3">
+                      <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Secret Key</label>
+                      <input 
+                        type="password" 
+                        placeholder="cs_xxxxxxxx" 
+                        className="w-full h-14 bg-white/[0.02] border border-white/5 rounded-[1.25rem] px-6 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all placeholder:text-white/10"
+                        value={consumerSecret}
+                        onChange={(e) => setConsumerSecret(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                )}
 
-                  {modalType === 'Shopify' ? (
-                    <>
-                      <div className="space-y-2">
-                        <label className="text-xs font-semibold text-muted-foreground uppercase">
-                          Client ID
-                        </label>
-                        <div className="relative">
-                          <Plus className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                          <input 
-                            type="text" 
-                            placeholder="Enter Client ID" 
-                            className="w-full bg-background border border-white/10 rounded-xl py-3 pl-10 pr-4 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all"
-                            value={clientId}
-                            onChange={(e) => setClientId(e.target.value)}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="text-xs font-semibold text-muted-foreground uppercase">
-                          Client Secret
-                        </label>
-                        <div className="relative">
-                          <CheckCircle2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                          <input 
-                            type="password" 
-                            placeholder="Enter Client Secret" 
-                            className="w-full bg-background border border-white/10 rounded-xl py-3 pl-10 pr-4 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all"
-                            value={clientSecret}
-                            onChange={(e) => setClientSecret(e.target.value)}
-                          />
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="space-y-2">
-                        <label className="text-xs font-semibold text-muted-foreground uppercase">
-                          Consumer Key
-                        </label>
-                        <div className="relative">
-                          <Plus className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                          <input 
-                            type="text" 
-                            placeholder="ck_xxxxxxxxxxxxxxxx" 
-                            className="w-full bg-background border border-white/10 rounded-xl py-3 pl-10 pr-4 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all"
-                            value={consumerKey}
-                            onChange={(e) => setConsumerKey(e.target.value)}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="text-xs font-semibold text-muted-foreground uppercase">
-                          Consumer Secret
-                        </label>
-                        <div className="relative">
-                          <CheckCircle2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                          <input 
-                            type="password" 
-                            placeholder="cs_xxxxxxxxxxxxxxxx" 
-                            className="w-full bg-background border border-white/10 rounded-xl py-3 pl-10 pr-4 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all"
-                            value={consumerSecret}
-                            onChange={(e) => setConsumerSecret(e.target.value)}
-                          />
-                        </div>
-                      </div>
-                    </>
-                  )}
-
-                  <Button type="submit" className="w-full h-12" disabled={isConnecting}>
-                    {isConnecting ? (
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                    ) : (
-                      `Connect ${modalType}`
-                    )}
-                  </Button>
-                </form>
-              </CardContent>
+                <div className="flex gap-4 pt-6">
+                   <Button type="button" variant="secondary" className="flex-1 h-14 rounded-2xl font-black uppercase tracking-widest text-[10px] border-white/5" onClick={() => setShowModal(false)}>Cancel Sequence</Button>
+                   <Button type="submit" variant="premium" className="flex-1 h-14 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-2xl shadow-primary/20" disabled={isConnecting}>
+                      {isConnecting ? <RefreshCw className="w-5 h-5 animate-spin" /> : `Initiate Connection`}
+                   </Button>
+                </div>
+              </form>
            </Card>
         </div>
       )}
