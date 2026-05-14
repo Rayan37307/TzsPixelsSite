@@ -12,6 +12,7 @@ import { AbandonedCheckout } from './pages/AbandonedCheckout';
 import { NotificationsCenter } from './pages/NotificationsCenter';
 import { BotManagement } from './pages/BotManagement';
 import { MessengerConversations } from './pages/MessengerConversations';
+import { Settings } from './pages/Settings';
 import { Login } from './pages/Login';
 
 const queryClient = new QueryClient();
@@ -34,7 +35,7 @@ const App: React.FC = () => {
             <Route path="/notifications" element={<NotificationsCenter />} />
             <Route path="/bots" element={<BotManagement />} />
             <Route path="/messenger" element={<MessengerConversations />} />
-            <Route path="/settings" element={<div className="p-8 text-white">Settings Page Coming Soon</div>} />
+            <Route path="/settings" element={<Settings />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />

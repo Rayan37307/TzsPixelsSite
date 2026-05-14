@@ -151,3 +151,14 @@ export const messagingApi = {
     return response.data;
   }
 };
+
+export const settingsApi = {
+  get: async () => {
+    const response = await axios.get(`${API_BASE_URL}/settings`);
+    return response.data;
+  },
+  update: async (key: string, value: any) => {
+    const response = await axios.put(`${API_BASE_URL}/settings/${key}`, { value });
+    return response.data;
+  }
+};

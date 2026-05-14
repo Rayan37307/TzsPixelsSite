@@ -13,9 +13,11 @@ import { messengerRoutes } from './routes/messengerRoutes';
 import { storeRoutes } from './routes/storeRoutes';
 import abandonedRoutes from './routes/abandonedRoutes';
 import messagingRoutes from './routes/messagingRoutes';
+import { settingsRoutes } from './routes/settingsRoutes';
 import { scanNewOrders } from './services/fraudDetectionService';
 import { ShopifyService } from './services/shopifyService';
 import { initializeMessagingTables } from './services/messaging/conversationDb';
+import { initializeSettingsTable } from './services/settingsService';
 
 dotenv.config();
 
@@ -37,6 +39,7 @@ app.use('/api/fraud', fraudRoutes);
 app.use('/api/messenger', messengerRoutes);
 app.use('/api/stores', storeRoutes);
 app.use('/api/shopify', abandonedRoutes);
+app.use('/api/settings', settingsRoutes);
 app.use('/', messagingRoutes);
 
 app.get('/health', (req, res) => {
@@ -73,10 +76,11 @@ cron.schedule('*/30 * * * *', async () => {
 app.listen(PORT, async () => {
   console.log(`🚀 Tzs Pixels Backend running on http://localhost:${PORT}`);
   
-  // Initialize messaging tables
+  // Initialize tables
   try {
     await initializeMessagingTables();
+    await initializeSettingsTable();
   } catch (error) {
-    console.error('[Init] Failed to initialize messaging tables:', error);
+    console.error('[Init] Failed to initialize tables:', error);
   }
 });
