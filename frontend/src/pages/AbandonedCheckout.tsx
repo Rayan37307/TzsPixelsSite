@@ -67,7 +67,7 @@ export const AbandonedCheckout: React.FC = () => {
     <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-1000 pb-10">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-4xl font-black text-white tracking-tight italic">Abandoned <span className="text-primary not-italic">Checkouts</span></h1>
+          <h1 className="text-4xl font-black text-primary tracking-tight italic">Abandoned <span className="text-primary not-italic">Checkouts</span></h1>
           <p className="text-muted-foreground mt-2 font-medium tracking-wide uppercase text-[10px] tracking-[0.2em]">Revenue Recovery Matrix</p>
         </div>
         <div className="flex gap-4">

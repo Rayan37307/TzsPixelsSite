@@ -209,7 +209,7 @@ export const MessengerConversations: React.FC = () => {
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-1000 pb-10">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-4xl font-black text-white tracking-tight">Unified <span className="text-primary italic">Inbox</span></h1>
+          <h1 className="text-4xl font-black text-primary tracking-tight">Unified <span className="text-primary italic">Inbox</span></h1>
           <p className="text-muted-foreground mt-2 font-medium tracking-wide">Multi-channel communication node.</p>
         </div>
         <div className="flex items-center gap-4">
@@ -270,7 +270,7 @@ export const MessengerConversations: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     {conv.ai_mode ? (
-                      <div className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(139,92,246,0.5)]" />
+                      <div className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
                     ) : (
                       <div className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
                     )}

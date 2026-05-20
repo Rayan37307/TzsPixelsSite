@@ -18,13 +18,13 @@
         const isMobile = window.innerWidth < 480;
         console.log('Scalefy Widget: Bot ID found:', botId, '| Mobile:', isMobile);
 
-        const primaryColor = '#7c3aed';
+        const primaryColor = '#10b981';
 
         const style = document.createElement('style');
         style.innerHTML = `
             @keyframes scalefy-pulse {
-                0%, 100% { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.4); }
-                50% { box-shadow: 0 0 0 12px rgba(124, 58, 237, 0); }
+                0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+                50% { box-shadow: 0 0 0 12px rgba(16, 185, 129, 0); }
             }
             @keyframes scalefy-bounce-in {
                 from { transform: scale(0.5); opacity: 0; }
@@ -52,11 +52,11 @@
                 width: 60px;
                 height: 60px;
                 border-radius: 50%;
-                background: linear-gradient(135deg, rgba(124, 58, 237, 0.9), rgba(139, 92, 246, 0.9));
+                background: linear-gradient(135deg, rgba(16, 185, 129, 0.9), rgba(52, 211, 153, 0.9));
                 backdrop-filter: blur(10px);
                 -webkit-backdrop-filter: blur(10px);
                 border: 1px solid rgba(255, 255, 255, 0.2);
-                box-shadow: 0 8px 32px rgba(124, 58, 237, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+                box-shadow: 0 8px 32px rgba(16, 185, 129, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
                 cursor: pointer;
                 display: flex !important;
                 align-items: center;
@@ -67,7 +67,7 @@
             #scalefy-bubble:hover { 
                 transform: scale(1.1); 
                 animation: none;
-                box-shadow: 0 12px 40px rgba(124, 58, 237, 0.4);
+                box-shadow: 0 12px 40px rgba(16, 185, 129, 0.4);
             }
             #scalefy-chat-window {
                 display: none;
@@ -84,7 +84,7 @@
             }
             #scalefy-chat-header {
                 padding: ${isMobile ? '16px 20px 16px 24px' : '16px 20px'};
-                background: linear-gradient(135deg, rgba(124, 58, 237, 0.15), rgba(139, 92, 246, 0.05));
+                background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(52, 211, 153, 0.05));
                 border-bottom: 1px solid rgba(255, 255, 255, 0.06);
                 display: flex;
                 justify-content: space-between;
@@ -99,11 +99,11 @@
                 width: 36px;
                 height: 36px;
                 border-radius: 50%;
-                background: linear-gradient(135deg, ${primaryColor}, #a78bfa);
+                background: linear-gradient(135deg, ${primaryColor}, #34d399);
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
+                box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
             }
             #scalefy-header-text {
                 display: flex;
@@ -160,11 +160,11 @@
                 border: 1px solid rgba(255, 255, 255, 0.06);
             }
             .scalefy-msg-user { 
-                background: linear-gradient(135deg, ${primaryColor}, #8b5cf6);
+                background: linear-gradient(135deg, ${primaryColor}, #34d399);
                 color: #fff;
                 align-self: flex-end; 
                 border-bottom-right-radius: 4px;
-                box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+                box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
             }
             .scalefy-typing {
                 display: flex;
@@ -208,7 +208,7 @@
             #scalefy-send {
                 width: 44px;
                 height: 44px;
-                background: linear-gradient(135deg, ${primaryColor}, #8b5cf6);
+                background: linear-gradient(135deg, ${primaryColor}, #34d399);
                 border: none;
                 border-radius: 50%;
                 color: white;
@@ -217,11 +217,11 @@
                 align-items: center;
                 justify-content: center;
                 transition: transform 0.2s, box-shadow 0.2s;
-                box-shadow: 0 4px 16px rgba(124, 58, 237, 0.3);
+                box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
             }
             #scalefy-send:hover { 
                 transform: scale(1.05);
-                box-shadow: 0 6px 20px rgba(124, 58, 237, 0.4);
+                box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
             }
             #scalefy-send:disabled {
                 opacity: 0.5;
@@ -283,9 +283,9 @@
                     bubble.style.background = `linear-gradient(135deg, ${color}, ${color}cc)`;
                     avatar.style.background = `linear-gradient(135deg, ${color}, ${color}dd)`;
                     sendBtn.style.background = `linear-gradient(135deg, ${color}, ${color}dd)`;
-                    style.innerHTML = style.innerHTML.replace('#7c3aed', color);
-                    style.innerHTML = style.innerHTML.replace('rgba(124, 58, 237, 0.4)', color + '66');
-                    style.innerHTML = style.innerHTML.replace('rgba(124, 58, 237, 0.3)', color + '4d');
+                    style.innerHTML = style.innerHTML.replace('#10b981', color);
+                    style.innerHTML = style.innerHTML.replace('rgba(16, 185, 129, 0.4)', color + '66');
+                    style.innerHTML = style.innerHTML.replace('rgba(16, 185, 129, 0.3)', color + '4d');
                 }
                 addMessage('model', config.welcome_message || 'Hello! How can I help you today?', true);
             })

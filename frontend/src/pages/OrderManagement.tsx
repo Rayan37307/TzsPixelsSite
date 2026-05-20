@@ -61,7 +61,7 @@ export const OrderManagement: React.FC = () => {
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-1000 pb-10">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-4xl font-black text-white tracking-tight">Orders <span className="text-primary italic">Management</span></h1>
+          <h1 className="text-4xl font-black text-primary tracking-tight">Orders <span className="text-primary italic">Management</span></h1>
           <p className="text-muted-foreground mt-2 font-medium tracking-wide">Orchestrate your commerce flow with precision.</p>
         </div>
         <div className="flex items-center gap-4">
@@ -214,7 +214,7 @@ export const OrderManagement: React.FC = () => {
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300">
           <Card className="w-full max-w-2xl bg-[#0d0d0d] border-white/[0.05] p-12 rounded-[3rem] shadow-[0_0_50px_rgba(0,0,0,0.5)] relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary via-purple-400 to-primary/50" />
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary via-emerald-400 to-primary/50" />
             
             <div className="flex items-center justify-between mb-10">
                <div>

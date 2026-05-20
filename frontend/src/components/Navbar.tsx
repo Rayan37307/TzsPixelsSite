@@ -48,7 +48,7 @@ export const Navbar: React.FC = () => {
           </div>
         </div>
 
-        <Button className="bg-[#8b5cf6]/10 text-[#8b5cf6] border border-[#8b5cf6]/20 h-9 rounded-xl px-5 text-xs font-black shadow-lg shadow-[#8b5cf6]/5">
+        <Button className="bg-[#10b981]/10 text-[#10b981] border border-[#10b981]/20 h-9 rounded-xl px-5 text-xs font-black shadow-lg shadow-[#10b981]/5">
           Deposit <Plus className="w-3.5 h-3.5 ml-2" />
         </Button>
       </div>

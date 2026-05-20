@@ -14,10 +14,18 @@ export async function initializeSettingsTable(): Promise<void> {
 
     // Initialize default settings if they don't exist
     const defaults = [
-      { key: 'system_core', value: { platformName: 'Scalefy Enterprise', webhookUrl: 'https://api.scalefy.ai/hooks/v1', currency: 'USD' } },
-      { key: 'neural_config', value: { model: 'GPT-4-Turbo', temperature: 0.7, maxTokens: 2048, concurrentAnalysis: 10 } },
-      { key: 'security', value: { auditLevel: 'Standard', fraudSensitivity: 0.8, sessionTimeout: 3600 } },
-      { key: 'interface', value: { glassmorphism: 0.8, animations: true, compactMode: false } }
+      { key: 'neural_config', value: { 
+          model: 'GPT-4-Turbo', 
+          geminiKey: '',
+          chatgptKey: ''
+      } },
+      { key: 'ecommerce', value: {
+          shopifyAppId: '',
+          shopifyAppSecret: '',
+          wooUrl: '',
+          wooConsumerKey: '',
+          wooConsumerSecret: ''
+      } }
     ];
 
     for (const { key, value } of defaults) {
@@ -31,6 +39,7 @@ export async function initializeSettingsTable(): Promise<void> {
     console.log('[Migration] settings table ready');
   } catch (error: any) {
     console.error('[Migration] Settings table initialization failed:', error.message);
+    throw error;
   }
 }
 

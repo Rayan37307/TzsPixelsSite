@@ -4,25 +4,25 @@
 
 @layer base {
   :root {
-    --background: 240 10% 2%;
+    --background: 160 15% 2%;
     --foreground: 0 0% 98%;
-    --card: 240 10% 4%;
+    --card: 160 15% 4%;
     --card-foreground: 0 0% 98%;
-    --popover: 240 10% 4%;
+    --popover: 160 15% 4%;
     --popover-foreground: 0 0% 98%;
-    --primary: 263.4 87.6% 59.8%;
+    --primary: 160 84% 39%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 240 3.7% 15.9%;
+    --secondary: 160 10% 12%;
     --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
+    --muted: 160 10% 12%;
+    --muted-foreground: 160 10% 64.9%;
+    --accent: 160 10% 12%;
     --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 263.4 87.6% 59.8%;
+    --border: 160 10% 12%;
+    --input: 160 10% 12%;
+    --ring: 160 84% 39%;
     --radius: 1.25rem;
   }
 }
@@ -32,7 +32,7 @@
     @apply border-border/40;
   }
   body {
-    @apply bg-[#050507] text-foreground antialiased;
+    @apply bg-[#040605] text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
     letter-spacing: -0.01em;
   }
@@ -54,11 +54,11 @@
 
 /* Premium Utilities */
 .glass-premium {
-  @apply bg-[#0f1117]/80 backdrop-blur-xl border border-white/[0.03] shadow-[0_8px_32px_0_rgba(0,0,0,0.36)];
+  @apply bg-[#080d0a]/80 backdrop-blur-xl border border-white/[0.03] shadow-[0_8px_32px_0_rgba(0,0,0,0.36)];
 }
 
 .glow-primary {
-  @apply shadow-[0_0_20px_rgba(139,92,246,0.15)];
+  @apply shadow-[0_0_20px_rgba(16,185,129,0.15)];
 }
 
 .text-gradient {
@@ -66,5 +66,5 @@
 }
 
 .sidebar-gradient {
-  @apply bg-gradient-to-b from-[#0d0d12] to-[#050507];
+  @apply bg-gradient-to-b from-[#070b09] to-[#040605];
 }

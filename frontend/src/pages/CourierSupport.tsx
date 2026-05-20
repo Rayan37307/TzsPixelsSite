@@ -175,7 +175,7 @@ export const CourierSupport: React.FC = () => {
           <div className="space-y-8 relative">
             <div className="flex items-center gap-4">
                <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
-                  <Zap className="w-6 h-6 text-primary shadow-[0_0_15px_rgba(139,92,246,0.5)]" />
+                  <Zap className="w-6 h-6 text-primary shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
                </div>
                <h3 className="text-xl font-black text-white italic tracking-tight">Smart Routing AI</h3>
             </div>

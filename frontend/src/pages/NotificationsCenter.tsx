@@ -63,7 +63,7 @@ export const NotificationsCenter: React.FC = () => {
               </div>
               <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Neural Signal Hub</p>
            </div>
-           <h1 className="text-4xl font-black text-white tracking-tight italic">Intelligence <span className="text-primary not-italic">Center</span></h1>
+           <h1 className="text-4xl font-black text-primary tracking-tight italic">Intelligence <span className="text-primary not-italic">Center</span></h1>
         </div>
         <Button variant="secondary" className="h-12 px-6 rounded-xl font-black text-[10px] uppercase tracking-widest border-white/5 gap-2" onClick={markAllRead}>
            <CheckCircle2 className="w-4 h-4" /> Clear All Signals
@@ -91,7 +91,7 @@ export const NotificationsCenter: React.FC = () => {
             >
               <div className="relative p-8 flex gap-8">
                 {n.unread && (
-                  <div className="absolute top-0 left-0 bottom-0 w-1.5 bg-primary shadow-[0_0_15px_rgba(139,92,246,0.5)]" />
+                  <div className="absolute top-0 left-0 bottom-0 w-1.5 bg-primary shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
                 )}
                 
                 <div className={cn(

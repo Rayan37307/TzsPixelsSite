@@ -162,3 +162,10 @@ export const settingsApi = {
     return response.data;
   }
 };
+
+export const aiApi = {
+  getPerformance: async () => {
+    const response = await axios.get(`${API_BASE_URL}/ai/performance`);
+    return response.data;
+  }
+};

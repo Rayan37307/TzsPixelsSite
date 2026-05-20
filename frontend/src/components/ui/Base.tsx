@@ -48,12 +48,12 @@ export const Button: React.FC<ButtonProps> = ({
   ...props 
 }) => {
   const variants = {
-    primary: 'bg-[#8b5cf6] text-white hover:bg-[#7c3aed] shadow-lg shadow-[#8b5cf6]/20 transition-all active:scale-95',
+    primary: 'bg-[#10b981] text-white hover:bg-[#059669] shadow-lg shadow-[#10b981]/20 transition-all active:scale-95',
     secondary: 'bg-white/5 text-white border border-white/10 hover:bg-white/10 transition-all active:scale-95',
     outline: 'border border-white/10 bg-transparent hover:bg-white/5 text-white transition-all active:scale-95',
     ghost: 'bg-transparent hover:bg-white/5 text-muted-foreground hover:text-white transition-all',
     danger: 'bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20 transition-all active:scale-95',
-    premium: 'bg-gradient-to-r from-[#8b5cf6] to-[#6366f1] text-white hover:opacity-90 shadow-xl shadow-[#8b5cf6]/20 transition-all active:scale-95',
+    premium: 'bg-gradient-to-r from-[#10b981] to-[#06b6d4] text-white hover:opacity-90 shadow-xl shadow-[#10b981]/20 transition-all active:scale-95',
   };
 
   const sizes = {
@@ -89,7 +89,7 @@ export const Badge: React.FC<BadgeProps> = ({ children, variant = 'default', cla
     warning: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
     danger: 'bg-red-500/10 text-red-400 border-red-500/20',
     info: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-    primary: 'bg-[#8b5cf6]/20 text-[#8b5cf6] border-[#8b5cf6]/30',
+    primary: 'bg-[#10b981]/20 text-[#10b981] border-[#10b981]/30',
     ghost: 'bg-transparent text-muted-foreground border-transparent hover:text-white',
   };
 

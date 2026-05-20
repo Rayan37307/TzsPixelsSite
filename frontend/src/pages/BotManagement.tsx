@@ -14,7 +14,7 @@ export const BotManagement: React.FC = () => {
   const [formData, setFormData] = useState({
     name: '',
     system_instruction: '',
-    primary_color: '#7c3aed',
+    primary_color: '#10b981',
     welcome_message: 'Hello! How can I help you today?'
   });
 
@@ -43,7 +43,7 @@ export const BotManagement: React.FC = () => {
       }
       setShowModal(false);
       setEditingBot(null);
-      setFormData({ name: '', system_instruction: '', primary_color: '#7c3aed', welcome_message: 'Hello! How can I help you today?' });
+      setFormData({ name: '', system_instruction: '', primary_color: '#10b981', welcome_message: 'Hello! How can I help you today?' });
       fetchBots();
     } catch (err) {
       console.error('Failed to save bot:', err);
@@ -70,10 +70,10 @@ export const BotManagement: React.FC = () => {
     <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-1000 pb-10">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-4xl font-black text-white tracking-tight">AI Bot <span className="text-primary italic">Studio</span></h1>
+          <h1 className="text-4xl font-black text-primary tracking-tight">AI Bot <span className="text-primary italic">Studio</span></h1>
           <p className="text-muted-foreground mt-2 font-medium tracking-wide uppercase text-[10px] tracking-[0.2em]">Neural Network Configuration Hub</p>
         </div>
-        <Button onClick={() => { setEditingBot(null); setFormData({ name: '', system_instruction: '', primary_color: '#7c3aed', welcome_message: 'Hello! How can I help you today?' }); setShowModal(true); }} variant="premium" className="h-14 px-8 rounded-2xl gap-3 font-black text-sm uppercase tracking-widest shadow-2xl shadow-primary/20">
+        <Button onClick={() => { setEditingBot(null); setFormData({ name: '', system_instruction: '', primary_color: '#10b981', welcome_message: 'Hello! How can I help you today?' }); setShowModal(true); }} variant="premium" className="h-14 px-8 rounded-2xl gap-3 font-black text-sm uppercase tracking-widest shadow-2xl shadow-primary/20">
           <Plus className="w-5 h-5" /> New Model
         </Button>
       </div>

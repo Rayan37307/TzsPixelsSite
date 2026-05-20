@@ -1,7 +1,6 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
-import { Navbar } from '../components/Navbar';
 import { useUIStore } from '../store';
 import { cn } from '../utils/cn';
 
@@ -17,8 +16,7 @@ export const DashboardLayout: React.FC = () => {
           sidebarOpen ? "pl-[280px]" : "pl-24"
         )}
       >
-        <Navbar />
-        <main className="flex-1 px-8 pb-8 overflow-y-auto">
+        <main className="flex-1 px-8 py-8 overflow-y-auto">
           <div className="max-w-[1600px] mx-auto">
             <Outlet />
           </div>

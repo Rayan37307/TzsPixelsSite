@@ -2,9 +2,7 @@ import React from 'react';
 import { 
   LayoutDashboard, 
   ShoppingBag, 
-  ShieldAlert, 
   MessageSquareCode, 
-  UserX, 
   Bell, 
   Settings,
   ChevronLeft,
@@ -12,7 +10,8 @@ import {
   LogOut,
   MessageCircle,
   Zap,
-  ChevronDown
+  ChevronDown,
+  Brain
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '../utils/cn';
@@ -21,10 +20,9 @@ import { useUIStore } from '../store';
 const menuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
   { icon: ShoppingBag, label: 'Orders', path: '/orders' },
-  { icon: ShieldAlert, label: 'Fraud Detection', path: '/fraud' },
   { icon: MessageSquareCode, label: 'Bot Studio', path: '/bots' },
   { icon: MessageCircle, label: 'Messenger', path: '/messenger' },
-  { icon: UserX, label: 'Abandoned', path: '/abandoned' },
+  { icon: Brain, label: 'AI Performance', path: '/ai-performance' },
   { icon: Bell, label: 'Notifications', path: '/notifications' },
   { icon: Settings, label: 'Settings', path: '/settings' },
 ];
@@ -78,7 +76,7 @@ export const Sidebar: React.FC = () => {
               )}
               
               {!sidebarOpen && (
-                <div className="absolute left-20 bg-[#1a1b23] text-white px-3 py-2 rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none text-xs font-bold whitespace-nowrap z-50 shadow-xl border border-white/5 translate-x-2 group-hover:translate-x-0">
+                <div className="absolute left-20 bg-[#161f1b] text-white px-3 py-2 rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none text-xs font-bold whitespace-nowrap z-50 shadow-xl border border-white/5 translate-x-2 group-hover:translate-x-0">
                   {item.label}
                 </div>
               )}

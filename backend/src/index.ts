@@ -73,14 +73,20 @@ cron.schedule('*/30 * * * *', async () => {
   }
 });
 
-app.listen(PORT, async () => {
-  console.log(`🚀 Tzs Pixels Backend running on http://localhost:${PORT}`);
-  
-  // Initialize tables
+async function startServer() {
+  // Initialize database tables before accepting connections
   try {
     await initializeMessagingTables();
     await initializeSettingsTable();
+    console.log('[Init] All database tables initialized');
   } catch (error) {
-    console.error('[Init] Failed to initialize tables:', error);
+    console.error('[Init] Failed to initialize database tables:', error);
+    process.exit(1);
   }
-});
+
+  app.listen(PORT, () => {
+    console.log(`🚀 Tzs Pixels Backend running on http://localhost:${PORT}`);
+  });
+}
+
+startServer();

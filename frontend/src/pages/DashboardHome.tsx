@@ -82,7 +82,7 @@ export const DashboardHome: React.FC = () => {
     <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-1000 pb-20">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-5xl font-black text-white tracking-tight italic">Core <span className="text-primary not-italic">Dashboard</span></h1>
+          <h1 className="text-5xl font-black text-primary tracking-tight italic">Core <span className="text-primary not-italic">Dashboard</span></h1>
           <p className="text-muted-foreground mt-2 font-black uppercase text-[10px] tracking-[0.3em]">Real-Time Ecosystem Telemetry</p>
         </div>
         <div className="flex gap-4">
@@ -139,8 +139,8 @@ export const DashboardHome: React.FC = () => {
               <AreaChart data={salesData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.2}/>
-                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#ffffff03" vertical={false} />
@@ -163,13 +163,13 @@ export const DashboardHome: React.FC = () => {
                 />
                 <Tooltip 
                   contentStyle={{ backgroundColor: '#0d0d0d', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '2rem', padding: '20px' }}
-                  itemStyle={{ color: '#8b5cf6', fontSize: '14px', fontWeight: '900', fontStyle: 'italic' }}
+                  itemStyle={{ color: '#10b981', fontSize: '14px', fontWeight: '900', fontStyle: 'italic' }}
                   labelStyle={{ color: '#666', fontSize: '10px', fontWeight: '900', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.2em' }}
                 />
                 <Area 
                   type="monotone" 
                   dataKey="revenue" 
-                  stroke="#8b5cf6" 
+                  stroke="#10b981" 
                   strokeWidth={4}
                   fillOpacity={1} 
                   fill="url(#colorRevenue)" 
@@ -251,7 +251,7 @@ export const DashboardHome: React.FC = () => {
                   "w-4 h-4 rounded-full border-4 border-black z-10 shrink-0 mt-1 transition-transform group-hover:scale-125",
                   item.status === 'success' ? 'bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.4)]' : 
                   item.status === 'danger' ? 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.4)]' : 
-                  item.status === 'warning' ? 'bg-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.4)]' : 'bg-primary shadow-[0_0_15px_rgba(139,92,246,0.4)]'
+                  item.status === 'warning' ? 'bg-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.4)]' : 'bg-primary shadow-[0_0_15px_rgba(16,185,129,0.4)]'
                 )} />
                 <div className="flex-1 pb-4">
                   <p className="text-sm text-white/90 font-bold leading-relaxed group-hover:text-primary transition-colors italic">{item.message}</p>
@@ -289,7 +289,7 @@ export const DashboardHome: React.FC = () => {
                 <span className="text-lg font-black text-primary italic">98.4%</span>
               </div>
               <div className="w-full bg-white/[0.03] h-4 rounded-full overflow-hidden p-1 border border-white/[0.05]">
-                <div className="bg-gradient-to-r from-primary via-purple-400 to-primary h-full rounded-full w-[98.4%] shadow-[0_0_20px_rgba(139,92,246,0.6)] animate-pulse" />
+                <div className="bg-gradient-to-r from-primary via-emerald-400 to-primary h-full rounded-full w-[98.4%] shadow-[0_0_20px_rgba(16,185,129,0.6)] animate-pulse" />
               </div>
             </div>
 

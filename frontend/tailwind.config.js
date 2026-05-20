@@ -18,7 +18,7 @@ export default {
           foreground: "#ffffff",
         },
         primary: {
-          DEFAULT: "#8b5cf6", // Vibrant Purple
+          DEFAULT: "#10b981", // Vibrant Emerald Green
           foreground: "#ffffff",
         },
         secondary: {
@@ -35,7 +35,7 @@ export default {
         },
         border: "rgba(255, 255, 255, 0.05)",
         input: "rgba(255, 255, 255, 0.05)",
-        ring: "#8b5cf6",
+        ring: "#10b981",
       },
       borderRadius: {
         "3xl": "1.5rem",

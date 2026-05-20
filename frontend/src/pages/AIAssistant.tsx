@@ -68,7 +68,7 @@ export const AIAssistant: React.FC = () => {
                 chat.active ? "bg-primary/[0.03]" : "hover:bg-white/[0.01]"
               )}
             >
-              {chat.active && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary shadow-[0_0_10px_rgba(139,92,246,0.5)]" />}
+              {chat.active && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary shadow-[0_0_10px_rgba(16,185,129,0.5)]" />}
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-3">
                   <div className="relative">
@@ -189,7 +189,7 @@ export const AIAssistant: React.FC = () => {
             </Button>
           </div>
           <div className="mt-4 flex items-center justify-center gap-2">
-             <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(139,92,246,0.8)]" />
+             <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
              <p className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.3em]">
                System in <span className="text-primary">Autonomous State</span> • Logic Synchronization Active
              </p>

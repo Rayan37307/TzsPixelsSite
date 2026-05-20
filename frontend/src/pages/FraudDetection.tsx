@@ -220,7 +220,7 @@ export const FraudDetection: React.FC = () => {
             <CardContent className="p-0 space-y-6">
                {[
                  { icon: Globe, label: 'Proxy Detection', count: 45, color: 'text-blue-400', bg: 'bg-blue-400/10' },
-                 { icon: Phone, label: 'VoIP Usage', count: 12, color: 'text-purple-400', bg: 'bg-purple-400/10' },
+                 { icon: Phone, label: 'VoIP Usage', count: 12, color: 'text-cyan-400', bg: 'bg-cyan-400/10' },
                  { icon: CreditCard, label: 'Velocity Triggers', count: 8, color: 'text-emerald-400', bg: 'bg-emerald-400/10' },
                  { icon: History, label: 'Negative Pattern', count: 22, color: 'text-amber-400', bg: 'bg-amber-400/10' },
                ].map((item) => (
