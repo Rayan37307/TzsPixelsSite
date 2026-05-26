@@ -43,94 +43,87 @@ export const NotificationsCenter: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[500px] gap-6">
-        <div className="relative">
-           <div className="w-16 h-16 rounded-full border-t-2 border-primary animate-spin" />
-           <Bell className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 text-primary/50 animate-pulse" />
-        </div>
-        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em]">Syncing Intelligence Feed...</p>
+      <div className="flex flex-col items-center justify-center min-h-[500px] gap-4">
+        <div className="w-10 h-10 rounded-full border-2 border-border border-t-[var(--color-accent)] animate-spin" />
+        <p className="font-mono text-sm text-muted-foreground">Loading notifications...</p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-1000 pb-20">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-4">
+    <div className="max-w-4xl mx-auto pb-20">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
         <div>
-           <div className="flex items-center gap-3 mb-2">
-              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                 <Bell className="w-4 h-4 text-primary" />
-              </div>
-              <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Neural Signal Hub</p>
+           <div className="flex items-center gap-2 mb-2">
+              <Bell className="w-4 h-4 text-muted-foreground" />
+              <p className="font-mono text-xs text-muted-foreground">Notifications</p>
            </div>
-           <h1 className="text-4xl font-black text-primary tracking-tight italic">Intelligence <span className="text-primary not-italic">Center</span></h1>
+           <h1 className="text-4xl font-black text-foreground tracking-tight">Activity center</h1>
         </div>
-        <Button variant="secondary" className="h-12 px-6 rounded-xl font-black text-[10px] uppercase tracking-widest border-white/5 gap-2" onClick={markAllRead}>
-           <CheckCircle2 className="w-4 h-4" /> Clear All Signals
+        <Button variant="secondary" size="md" onClick={markAllRead} className="gap-2">
+           <CheckCircle2 className="w-4 h-4" /> Mark all read
         </Button>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         {notifications.length === 0 ? (
-          <Card className="py-24 text-center bg-white/[0.01] border-dashed border-white/10 rounded-[2.5rem]">
-             <div className="w-20 h-20 rounded-[2rem] bg-white/[0.02] flex items-center justify-center mx-auto mb-6">
-                <Bell className="w-10 h-10 text-muted-foreground opacity-20" />
+          <Card className="py-24 text-center border-2 border-dashed border-border">
+             <div className="w-16 h-16 rounded-xl bg-[var(--color-paper-3)] border-2 border-border flex items-center justify-center mx-auto mb-4">
+                <Bell className="w-8 h-8 text-muted-foreground opacity-30" />
              </div>
-             <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">No active transmissions detected</p>
+             <p className="font-mono text-sm text-muted-foreground">No notifications</p>
           </Card>
         ) : (
           notifications.map((n) => (
-            <Card 
-              key={n.id} 
+            <Card
+              key={n.id}
               className={cn(
-                "p-0 overflow-hidden transition-all duration-500 hover:scale-[1.01] group",
-                n.unread 
-                  ? 'bg-primary/[0.03] border-primary/20 shadow-2xl shadow-primary/5' 
-                  : 'bg-[#0d0d0d] border-white/[0.05] hover:border-white/10'
+                "p-0 overflow-hidden transition-colors group",
+                n.unread
+                  ? 'border-2 border-[var(--color-accent)]/30'
+                  : 'hover:border-[var(--color-border-hover)]'
               )}
             >
-              <div className="relative p-8 flex gap-8">
+              <div className="relative p-6 flex gap-5">
                 {n.unread && (
-                  <div className="absolute top-0 left-0 bottom-0 w-1.5 bg-primary shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
+                  <div className="absolute top-0 left-0 bottom-0 w-0.5 bg-[var(--color-accent)]" />
                 )}
-                
+
                 <div className={cn(
-                  "shrink-0 w-16 h-16 rounded-[1.25rem] flex items-center justify-center shadow-xl transition-transform group-hover:rotate-12 group-hover:scale-110",
-                  n.type === 'fraud' ? 'bg-red-500/10 text-red-500 border border-red-500/20' :
-                  n.type === 'order' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' :
-                  n.type === 'abandoned' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' :
-                  'bg-blue-500/10 text-blue-500 border border-blue-500/20'
+                  "shrink-0 w-12 h-12 rounded-lg border-2 flex items-center justify-center transition-colors",
+                  n.type === 'fraud' ? 'border-[var(--color-danger)]/30 text-[var(--color-danger)] bg-[var(--color-danger)]/10' :
+                  n.type === 'order' ? 'border-[var(--color-success)]/30 text-[var(--color-success)] bg-[var(--color-success)]/10' :
+                  n.type === 'abandoned' ? 'border-[var(--color-warning)]/30 text-[var(--color-warning)] bg-[var(--color-warning)]/10' :
+                  'border-border text-muted-foreground bg-[var(--color-paper-3)]'
                 )}>
-                  {n.type === 'fraud' && <ShieldAlert className="w-8 h-8" />}
-                  {n.type === 'order' && <ShoppingBag className="w-8 h-8" />}
-                  {n.type === 'abandoned' && <UserX className="w-8 h-8" />}
-                  {n.type === 'courier' && <Truck className="w-8 h-8" />}
+                  {n.type === 'fraud' && <ShieldAlert className="w-6 h-6" />}
+                  {n.type === 'order' && <ShoppingBag className="w-6 h-6" />}
+                  {n.type === 'abandoned' && <UserX className="w-6 h-6" />}
+                  {n.type === 'courier' && <Truck className="w-6 h-6" />}
                 </div>
 
-                <div className="flex-1 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                       <h4 className="text-xl font-black text-white italic tracking-tight">{n.title}</h4>
-                       {n.unread && <Badge variant="primary" className="h-5 text-[8px] px-2 rounded-md font-black uppercase tracking-widest">Priority Signal</Badge>}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                       <h4 className="font-black text-base text-foreground tracking-tight">{n.title}</h4>
+                       {n.unread && <Badge variant="primary" className="text-[10px]">New</Badge>}
                     </div>
-                    <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest opacity-60 flex items-center gap-2">
-                       <MoreHorizontal className="w-3 h-3" /> {n.time}
-                    </span>
+                    <span className="font-mono text-xs text-muted-foreground shrink-0">{n.time}</span>
                   </div>
-                  
-                  <p className="text-sm font-medium text-white/60 leading-relaxed max-w-2xl">
+
+                  <p className="font-mono text-sm text-muted-foreground leading-relaxed">
                     {n.message}
                   </p>
 
-                  <div className="pt-4 flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0">
-                    <Button variant="premium" className="h-9 px-6 rounded-xl font-black text-[9px] uppercase tracking-widest shadow-xl shadow-primary/10">Execute Response</Button>
+                  <div className="mt-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button variant="primary" size="sm">Take action</Button>
                     {n.unread && (
-                      <Button 
-                        variant="ghost" 
-                        className="h-9 px-6 rounded-xl font-black text-[9px] uppercase tracking-widest text-muted-foreground hover:text-white hover:bg-white/5 border border-transparent hover:border-white/5"
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => markRead(n.id)}
                       >
-                        Acknowledge Signal
+                        Dismiss
                       </Button>
                     )}
                   </div>

@@ -1,17 +1,15 @@
 import React from 'react';
-import { 
-  LayoutDashboard, 
-  ShoppingBag, 
-  MessageSquareCode, 
-  Bell, 
+import {
+  LayoutDashboard,
+  ShoppingBag,
+  MessageSquareCode,
+  Bell,
   Settings,
   ChevronLeft,
   ChevronRight,
   LogOut,
   MessageCircle,
   Zap,
-  ChevronDown,
-  Brain
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '../utils/cn';
@@ -22,7 +20,6 @@ const menuItems = [
   { icon: ShoppingBag, label: 'Orders', path: '/orders' },
   { icon: MessageSquareCode, label: 'Bot Studio', path: '/bots' },
   { icon: MessageCircle, label: 'Messenger', path: '/messenger' },
-  { icon: Brain, label: 'AI Performance', path: '/ai-performance' },
   { icon: Bell, label: 'Notifications', path: '/notifications' },
   { icon: Settings, label: 'Settings', path: '/settings' },
 ];
@@ -32,22 +29,20 @@ export const Sidebar: React.FC = () => {
   const location = useLocation();
 
   return (
-    <aside 
+    <aside
       className={cn(
-        "fixed left-0 top-0 h-screen bg-[#0d0d0d] border-r border-white/[0.05] transition-all duration-500 z-50 flex flex-col py-6",
+        "fixed left-0 top-0 h-screen bg-card border-r border-border transition-all duration-300 z-50 flex flex-col py-6",
         sidebarOpen ? "w-[280px]" : "w-24"
       )}
     >
       <div className="mb-10 px-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0 shadow-xl shadow-white/5">
-             <Zap className="w-6 h-6 text-black fill-black" />
+          <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center shrink-0">
+             <Zap className="w-6 h-6 text-primary-foreground" />
           </div>
           {sidebarOpen && (
             <div className="flex items-center gap-2">
-              <span className="font-bold text-lg tracking-tight text-white">Scalefy</span>
-              <sup className="text-[10px] font-bold text-primary uppercase mt-1">Enterprise</sup>
-              <ChevronDown className="w-3 h-3 text-muted-foreground ml-1" />
+              <span className="font-black text-lg tracking-tight text-foreground">Scalefy</span>
             </div>
           )}
         </div>
@@ -61,22 +56,19 @@ export const Sidebar: React.FC = () => {
               key={item.label}
               to={item.path}
               className={cn(
-                "flex items-center gap-3.5 px-4 py-3.5 rounded-2xl transition-all duration-300 group relative",
-                isActive 
-                  ? "bg-[#1a1a1a] text-white shadow-inner" 
-                  : "text-muted-foreground hover:text-white hover:bg-white/[0.02]"
+                "flex items-center gap-3.5 px-4 py-3 rounded-lg transition-all duration-150 group relative",
+                isActive
+                  ? "bg-[var(--color-paper-3)] text-foreground border-l-2 border-[var(--color-accent)]"
+                  : "text-muted-foreground hover:text-foreground hover:bg-[var(--color-paper-3)]"
               )}
             >
-              <item.icon className={cn("w-5 h-5", isActive ? "text-white" : "text-muted-foreground group-hover:text-white")} />
+              <item.icon className={cn("w-5 h-5 shrink-0", isActive ? "text-foreground" : "text-muted-foreground group-hover:text-foreground")} />
               {sidebarOpen && (
-                <div className="flex items-center justify-between flex-1">
-                  <span className="font-bold text-sm tracking-tight">{item.label}</span>
-                  {isActive && <div className="w-1 h-4 bg-white rounded-full absolute left-0" />}
-                </div>
+                <span className="font-bold text-sm tracking-tight">{item.label}</span>
               )}
-              
+
               {!sidebarOpen && (
-                <div className="absolute left-20 bg-[#161f1b] text-white px-3 py-2 rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none text-xs font-bold whitespace-nowrap z-50 shadow-xl border border-white/5 translate-x-2 group-hover:translate-x-0">
+                <div className="absolute left-20 bg-popover text-foreground px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-150 pointer-events-none text-xs font-bold whitespace-nowrap z-50 border border-border translate-x-2 group-hover:translate-x-0">
                   {item.label}
                 </div>
               )}
@@ -85,16 +77,16 @@ export const Sidebar: React.FC = () => {
         })}
       </nav>
 
-      <div className="w-full px-4 mt-auto pt-6 border-t border-white/[0.03] space-y-1">
-        <button 
+      <div className="w-full px-4 mt-auto pt-6 border-t border-border space-y-1">
+        <button
           onClick={toggleSidebar}
-          className="w-full flex items-center gap-3.5 px-4 py-3.5 rounded-2xl text-muted-foreground hover:bg-white/[0.03] hover:text-white transition-all group"
+          className="w-full flex items-center gap-3.5 px-4 py-3 rounded-lg text-muted-foreground hover:bg-[var(--color-paper-3)] hover:text-foreground transition-all group"
         >
-          {sidebarOpen ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+          {sidebarOpen ? <ChevronLeft className="w-5 h-5 shrink-0" /> : <ChevronRight className="w-5 h-5 shrink-0" />}
           {sidebarOpen && <span className="font-bold text-sm tracking-tight">Collapse</span>}
         </button>
-        <button className="w-full flex items-center gap-3.5 px-4 py-3.5 rounded-2xl text-red-500 hover:bg-red-500/5 transition-all group">
-          <LogOut className="w-5 h-5" />
+        <button className="w-full flex items-center gap-3.5 px-4 py-3 rounded-lg text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 transition-all group">
+          <LogOut className="w-5 h-5 shrink-0" />
           {sidebarOpen && <span className="font-bold text-sm tracking-tight">Logout</span>}
         </button>
       </div>

@@ -1,20 +1,17 @@
 import React, { useState } from 'react';
-import { 
-  Search, 
-  Send, 
-  Bot, 
-  User, 
-  MoreHorizontal, 
-  Paperclip, 
+import {
+  Search,
+  Send,
+  Bot,
+  User,
+  MoreHorizontal,
+  Paperclip,
   Smile,
-  Circle,
-  Database,
-  ExternalLink,
   Zap,
   Sparkles,
   ShieldCheck,
+  Package,
   TrendingUp,
-  Package
 } from 'lucide-react';
 import { Card, Button, Badge } from '../components/ui/Base';
 import { cn } from '../utils/cn';
@@ -37,58 +34,54 @@ export const AIAssistant: React.FC = () => {
   const [message, setMessage] = useState('');
 
   return (
-    <div className="h-[calc(100vh-160px)] flex gap-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-      {/* Sidebar: Conversations */}
-      <Card className="w-80 flex flex-col p-0 overflow-hidden bg-[#0d0d0d] border-white/[0.05] rounded-[2.5rem]">
-        <div className="p-8 border-b border-white/[0.03]">
-          <div className="flex items-center justify-between mb-8">
+    <div className="h-[calc(100vh-160px)] flex gap-6">
+      {/* Conversation list */}
+      <Card className="w-72 flex flex-col p-0 overflow-hidden">
+        <div className="p-6 border-b border-border">
+          <div className="flex items-center justify-between mb-6">
             <div>
-               <h2 className="text-xl font-black text-white italic tracking-tight">Channels</h2>
-               <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mt-1">Active Vectors</p>
+               <h2 className="text-lg font-black text-foreground tracking-tight">Channels</h2>
+               <p className="font-mono text-xs text-muted-foreground mt-0.5">Active conversations</p>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-               <Zap className="w-5 h-5 text-primary" />
-            </div>
+            <Zap className="w-5 h-5 text-muted-foreground" />
           </div>
-          <div className="relative group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-            <input 
-              type="text" 
-              placeholder="SEARCH NEURAL BUS..." 
-              className="w-full bg-white/[0.02] border border-white/5 rounded-xl py-3 pl-11 pr-4 text-[10px] font-black uppercase tracking-widest text-white focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all placeholder:text-white/10"
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search..."
+              className="w-full bg-card border-2 border-border rounded-lg py-2.5 pl-10 pr-4 text-sm text-foreground focus:outline-none focus:border-[var(--color-accent)] transition-all placeholder:text-muted-foreground"
             />
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
+        <div className="flex-1 overflow-y-auto">
           {conversations.map((chat) => (
-            <div 
-              key={chat.id} 
+            <div
+              key={chat.id}
               className={cn(
-                "p-6 border-b border-white/[0.02] cursor-pointer transition-all duration-300 relative group",
-                chat.active ? "bg-primary/[0.03]" : "hover:bg-white/[0.01]"
+                "p-5 border-b border-border cursor-pointer transition-colors relative group",
+                chat.active ? "bg-[var(--color-paper-3)]" : "hover:bg-[var(--color-paper-3)]"
               )}
             >
-              {chat.active && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary shadow-[0_0_10px_rgba(16,185,129,0.5)]" />}
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <div className={cn(
-                      "w-10 h-10 rounded-xl flex items-center justify-center text-[10px] font-black text-white transition-transform group-hover:scale-110",
-                      chat.active ? "bg-primary/20 shadow-xl shadow-primary/20" : "bg-white/[0.03] border border-white/5"
-                    )}>
-                      {chat.name.split(' ').map(n => n[0]).join('')}
-                    </div>
-                    {chat.online && (
-                      <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-[#0d0d0d] shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                    )}
+              {chat.active && <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-[var(--color-accent)]" />}
+              <div className="flex items-center gap-3 mb-1.5">
+                <div className="relative">
+                  <div className={cn(
+                    "w-9 h-9 rounded-lg flex items-center justify-center font-mono text-xs font-bold text-foreground",
+                    chat.active ? "bg-[var(--color-accent)]/10 border-2 border-[var(--color-accent)]/30" : "bg-[var(--color-paper-3)] border-2 border-border"
+                  )}>
+                    {chat.name.split(' ').map(n => n[0]).join('')}
                   </div>
-                  <div>
-                    <span className="text-sm font-black text-white tracking-tight italic">{chat.name}</span>
-                    <div className="text-[9px] font-black text-muted-foreground uppercase tracking-widest opacity-60 mt-0.5">{chat.time} offset</div>
-                  </div>
+                  {chat.online && (
+                    <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-[var(--color-success)] rounded-sm border-2 border-card" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="font-bold text-sm text-foreground">{chat.name}</span>
+                  <div className="font-mono text-xs text-muted-foreground">{chat.time} ago</div>
                 </div>
               </div>
-              <p className="text-[11px] font-medium text-white/40 truncate leading-relaxed group-hover:text-white/60 transition-colors">
+              <p className="font-mono text-xs text-muted-foreground truncate ml-12">
                 {chat.lastMsg}
               </p>
             </div>
@@ -96,161 +89,147 @@ export const AIAssistant: React.FC = () => {
         </div>
       </Card>
 
-      {/* Main: Chat Window */}
-      <Card className="flex-1 flex flex-col p-0 overflow-hidden bg-[#0d0d0d] border-white/[0.05] rounded-[2.5rem] relative">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/20 via-transparent to-transparent" />
-        
+      {/* Chat window */}
+      <Card className="flex-1 flex flex-col p-0 overflow-hidden relative">
         {/* Header */}
-        <div className="p-8 border-b border-white/[0.03] flex items-center justify-between bg-white/[0.01]">
-          <div className="flex items-center gap-6">
-            <div className="relative">
-              <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center shadow-2xl">
-                <Bot className="w-8 h-8 text-primary" />
-              </div>
-              <div className="absolute -top-1 -right-1">
-                 <Badge variant="primary" className="h-5 text-[8px] px-2 rounded-md font-black uppercase tracking-widest shadow-lg">AUTO-PILOT</Badge>
-              </div>
+        <div className="p-6 border-b border-border flex items-center justify-between bg-[var(--color-paper-2)]">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-lg border-2 border-[var(--color-accent)]/30 bg-[var(--color-accent)]/10 flex items-center justify-center">
+              <Bot className="w-6 h-6 text-[var(--color-accent)]" />
             </div>
             <div>
-              <div className="flex items-center gap-3">
-                 <h3 className="text-xl font-black text-white italic tracking-tight">Sarah Johnson</h3>
-                 <Badge variant="outline" className="text-[8px] font-black uppercase tracking-widest border-emerald-500/20 text-emerald-500">Live Connection</Badge>
+              <div className="flex items-center gap-2">
+                 <h3 className="text-lg font-black text-foreground tracking-tight">Sarah Johnson</h3>
+                 <Badge variant="primary" className="border-2">AI active</Badge>
               </div>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">VECTOR ID: #X-1245</span>
-                <div className="w-1 h-1 rounded-full bg-white/20" />
-                <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Active Neural Bridge</span>
+              <div className="flex items-center gap-2 mt-0.5 font-mono text-xs text-muted-foreground">
+                ID: #X-1245
+                <span className="w-1 h-1 rounded-full bg-border" />
+                Auto-pilot
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <Button variant="secondary" className="h-12 px-6 rounded-xl gap-3 font-black text-[10px] uppercase tracking-widest border-white/5">
-              <Database className="w-4 h-4" /> Logic Base
+          <div className="flex items-center gap-3">
+            <Button variant="secondary" size="sm" className="gap-2">
+              <Sparkles className="w-4 h-4" /> Knowledge
             </Button>
-            <Button variant="secondary" size="icon" className="h-12 w-12 rounded-xl border-white/5">
+            <Button variant="secondary" size="icon">
               <MoreHorizontal className="w-5 h-5" />
             </Button>
           </div>
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-10 space-y-10 bg-gradient-to-b from-transparent via-transparent to-primary/[0.01] custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-8 space-y-6">
           {mockMessages.map((msg) => (
             <div key={msg.id} className={cn(
-              "flex gap-6 max-w-[75%]",
+              "flex gap-4 max-w-[75%]",
               msg.sender === 'user' ? "ml-auto flex-row-reverse" : ""
             )}>
               <div className={cn(
-                "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-2xl",
-                msg.sender === 'user' ? "bg-white/[0.03] border border-white/5" : "bg-primary/20 border border-primary/30"
+                "w-9 h-9 rounded-lg flex items-center justify-center shrink-0 border-2",
+                msg.sender === 'user' ? "border-border bg-[var(--color-paper-3)]" : "border-[var(--color-accent)]/30 bg-[var(--color-accent)]/10"
               )}>
-                {msg.sender === 'user' ? <User className="w-5 h-5 text-white/50" /> : <Bot className="w-5 h-5 text-primary" />}
+                {msg.sender === 'user' ? <User className="w-4 h-4 text-muted-foreground" /> : <Bot className="w-4 h-4 text-[var(--color-accent)]" />}
               </div>
-              <div className={cn("space-y-3", msg.sender === 'user' ? "text-right" : "")}>
+              <div className={cn("space-y-1", msg.sender === 'user' ? "text-right" : "")}>
                 <div className={cn(
-                  "p-6 rounded-[2rem] text-sm font-medium leading-relaxed shadow-2xl",
-                  msg.sender === 'user' 
-                    ? "bg-[#141414] border border-white/[0.05] text-white/90 rounded-tr-none" 
-                    : "bg-primary/[0.05] border border-primary/10 text-white rounded-tl-none"
+                  "rounded-lg px-5 py-3 text-sm leading-relaxed border-2",
+                  msg.sender === 'user'
+                    ? "bg-[var(--color-paper-3)] border-border text-foreground"
+                    : "bg-[var(--color-accent)]/5 border-[var(--color-accent)]/20 text-foreground"
                 )}>
                   {msg.text}
                 </div>
-                <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest opacity-40 px-2">
-                  TRANSMITTED @ {msg.time}
+                <p className="font-mono text-xs text-muted-foreground px-1">
+                  {msg.time}
                 </p>
               </div>
             </div>
           ))}
         </div>
 
-        {/* Footer: Input */}
-        <div className="p-8 bg-white/[0.01] border-t border-white/[0.03]">
-          <div className="relative flex items-center gap-4">
-            <div className="flex-1 relative group">
-               <input 
-                type="text" 
-                placeholder="INPUT NEURAL COMMAND..." 
-                className="w-full h-16 bg-white/[0.02] border border-white/5 rounded-[1.5rem] pl-8 pr-32 text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all placeholder:text-white/10"
+        {/* Input */}
+        <div className="p-6 border-t border-border">
+          <div className="relative flex items-center gap-3">
+            <div className="flex-1 relative">
+               <input
+                type="text"
+                placeholder="Type a message..."
+                className="w-full h-12 bg-card border-2 border-border rounded-lg pl-4 pr-24 text-sm text-foreground focus:outline-none focus:border-[var(--color-accent)] transition-all placeholder:text-muted-foreground"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
               />
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground hover:text-white hover:bg-white/5 rounded-xl">
-                  <Smile className="w-5 h-5" />
-                </Button>
-                <div className="w-[1px] h-6 bg-white/5 mx-1" />
-                <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground hover:text-white hover:bg-white/5 rounded-xl">
-                  <Paperclip className="w-5 h-5" />
-                </Button>
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                <button className="w-8 h-8 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-[var(--color-paper-3)] transition-colors">
+                  <Smile className="w-4 h-4" />
+                </button>
+                <div className="w-px h-5 bg-border mx-0.5" />
+                <button className="w-8 h-8 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-[var(--color-paper-3)] transition-colors">
+                  <Paperclip className="w-4 h-4" />
+                </button>
               </div>
             </div>
-            <Button variant="premium" className="h-16 w-16 rounded-[1.25rem] p-0 shrink-0 shadow-2xl shadow-primary/20">
-              <Send className="w-6 h-6" />
+            <Button variant="primary" className="w-12 h-12 p-0 shrink-0">
+              <Send className="w-5 h-5" />
             </Button>
           </div>
-          <div className="mt-4 flex items-center justify-center gap-2">
-             <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
-             <p className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.3em]">
-               System in <span className="text-primary">Autonomous State</span> • Logic Synchronization Active
-             </p>
+          <div className="mt-3 flex items-center justify-center gap-2">
+             <div className="w-1.5 h-1.5 rounded-sm bg-[var(--color-accent)]" />
+             <p className="font-mono text-xs text-muted-foreground">AI auto-pilot · all systems active</p>
           </div>
         </div>
       </Card>
 
-      {/* Info Panel: Context */}
-      <div className="w-80 space-y-8 hidden xl:block animate-in fade-in slide-in-from-right-4 duration-1000 delay-300">
-        <Card className="bg-[#0d0d0d] border-white/[0.05] rounded-[2.5rem] p-8 relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-8 opacity-5">
-             <Sparkles className="w-24 h-24 text-primary" />
-          </div>
-          <h3 className="text-[10px] font-black text-white uppercase tracking-[0.3em] mb-8 flex items-center justify-between">
-            Entity Telemetry
-            <ExternalLink className="w-4 h-4 text-primary cursor-pointer hover:scale-110 transition-transform" />
+      {/* Info panel */}
+      <div className="w-72 space-y-6 hidden xl:block">
+        <Card className="p-6">
+          <h3 className="font-mono text-xs text-muted-foreground mb-6 flex items-center justify-between">
+            Customer info
+            <span className="text-[var(--color-accent)] cursor-pointer hover:underline">View</span>
           </h3>
-          <div className="space-y-8">
-            <div className="flex items-center gap-5 group">
-               <div className="w-12 h-12 rounded-2xl bg-primary/5 border border-primary/10 flex items-center justify-center text-xl transition-transform group-hover:scale-110 shadow-2xl">💰</div>
+          <div className="space-y-5">
+            <div className="flex items-center gap-4">
+               <div className="w-10 h-10 rounded-lg bg-[var(--color-paper-3)] border-2 border-border flex items-center justify-center text-lg">💰</div>
                <div>
-                  <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Life-Cycle Value</p>
-                  <p className="text-lg font-black text-white italic tracking-tight">$2,458.00</p>
+                  <p className="font-mono text-xs text-muted-foreground">Lifetime value</p>
+                  <p className="font-bold text-lg text-foreground tracking-tight">$2,458</p>
                </div>
             </div>
-            <div className="flex items-center gap-5 group">
-               <div className="w-12 h-12 rounded-2xl bg-emerald-500/5 border border-emerald-500/10 flex items-center justify-center text-xl transition-transform group-hover:scale-110 shadow-2xl">📦</div>
+            <div className="flex items-center gap-4">
+               <div className="w-10 h-10 rounded-lg bg-[var(--color-paper-3)] border-2 border-border flex items-center justify-center text-lg">📦</div>
                <div>
-                  <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Active Payload</p>
-                  <p className="text-lg font-black text-white italic tracking-tight">#1245 <span className="text-[10px] text-emerald-500 not-italic">PENDING</span></p>
+                  <p className="font-mono text-xs text-muted-foreground">Active order</p>
+                  <p className="font-bold text-base text-foreground tracking-tight">#1245 <span className="font-mono text-xs font-normal text-[var(--color-success)]">PENDING</span></p>
                </div>
             </div>
-            <div className="flex items-center gap-5 group">
-               <div className="w-12 h-12 rounded-2xl bg-amber-500/5 border border-amber-500/10 flex items-center justify-center text-xl transition-transform group-hover:scale-110 shadow-2xl">⚡</div>
+            <div className="flex items-center gap-4">
+               <div className="w-10 h-10 rounded-lg bg-[var(--color-paper-3)] border-2 border-border flex items-center justify-center text-lg">⚡</div>
                <div>
-                  <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Anomaly Risk</p>
-                  <p className="text-lg font-black text-emerald-400 italic tracking-tight">LOW <span className="text-[10px] text-muted-foreground not-italic opacity-40">12%</span></p>
+                  <p className="font-mono text-xs text-muted-foreground">Risk</p>
+                  <p className="font-bold text-base text-foreground tracking-tight">LOW <span className="font-mono text-xs font-normal text-muted-foreground">12%</span></p>
                </div>
             </div>
           </div>
         </Card>
 
-        <Card className="bg-[#0d0d0d] border-white/[0.05] rounded-[2.5rem] p-8">
-          <div className="flex items-center gap-3 mb-8">
-             <div className="w-8 h-8 rounded-lg bg-white/[0.03] border border-white/5 flex items-center justify-center">
-                <ShieldCheck className="w-4 h-4 text-muted-foreground" />
-             </div>
-             <h3 className="text-[10px] font-black text-white uppercase tracking-[0.3em]">Directives</h3>
+        <Card className="p-6">
+          <div className="flex items-center gap-3 mb-5">
+             <ShieldCheck className="w-4 h-4 text-muted-foreground" />
+             <h3 className="font-mono text-xs text-muted-foreground">Quick actions</h3>
           </div>
-          <div className="grid grid-cols-1 gap-3">
-            <Button variant="secondary" className="justify-between text-[10px] font-black uppercase tracking-widest h-12 px-5 rounded-xl border-white/5 hover:bg-primary/10 hover:text-primary transition-all">
-              Initialize Refund <TrendingUp className="w-3 h-3 opacity-20" />
+          <div className="space-y-2">
+            <Button variant="secondary" size="md" className="w-full justify-between">
+              Initiate refund <TrendingUp className="w-3 h-3" />
             </Button>
-            <Button variant="secondary" className="justify-between text-[10px] font-black uppercase tracking-widest h-12 px-5 rounded-xl border-white/5 hover:bg-primary/10 hover:text-primary transition-all">
-              Re-route Package <Package className="w-3 h-3 opacity-20" />
+            <Button variant="secondary" size="md" className="w-full justify-between">
+              Re-route package <Package className="w-3 h-3" />
             </Button>
-            <Button variant="secondary" className="justify-between text-[10px] font-black uppercase tracking-widest h-12 px-5 rounded-xl border-white/5 hover:bg-primary/10 hover:text-primary transition-all">
-              Apply Loyalty <Sparkles className="w-3 h-3 opacity-20" />
+            <Button variant="secondary" size="md" className="w-full justify-between">
+              Apply loyalty <Sparkles className="w-3 h-3" />
             </Button>
-            <Button variant="secondary" className="justify-between text-[10px] font-black uppercase tracking-widest h-12 px-5 rounded-xl bg-red-500/5 border-red-500/10 text-red-400 hover:bg-red-500/10 transition-all">
-              TERMINATE ACCESS <ShieldCheck className="w-3 h-3 opacity-20" />
+            <Button variant="danger" size="md" className="w-full justify-between">
+              Terminate <ShieldCheck className="w-3 h-3" />
             </Button>
           </div>
         </Card>

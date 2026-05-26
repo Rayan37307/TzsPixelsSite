@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, Button, Badge, Input } from '../components/ui/Base';
 import { messagingApi } from '../services/api';
-import { MessageCircle, Clock, ChevronRight, User, Bot, Send, Phone, RefreshCw, Hand, ArrowLeft, Search } from 'lucide-react';
+import { MessageCircle, Clock, User, Bot, Send, RefreshCw, Hand, ArrowLeft, Search } from 'lucide-react';
 import { cn } from '../utils/cn';
 
 const FacebookIcon = ({ className }: { className?: string }) => (
@@ -30,7 +30,6 @@ const MessengerIcon = ({ className }: { className?: string }) => (
 
 const getPlatformConfig = (platform: string): { icon: React.ReactNode; color: string; bg: string } => {
   const p = platform?.toLowerCase() || 'facebook';
-  
   switch (p) {
     case 'facebook':
       return { icon: <FacebookIcon className="w-5 h-5" />, color: 'text-blue-500', bg: 'bg-blue-500/10' };
@@ -183,67 +182,54 @@ export const MessengerConversations: React.FC = () => {
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric'
-    });
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
   const formatTime = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit'
-    });
+    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   };
 
-  const getPlatformIcon = (platform: string) => {
-    return getPlatformConfig(platform).icon;
-  };
-
-  const getPlatformColor = (platform: string) => {
-    return getPlatformConfig(platform).bg + ' ' + getPlatformConfig(platform).color;
-  };
+  const getPlatformIcon = (platform: string) => getPlatformConfig(platform).icon;
+  const getPlatformColor = (platform: string) => getPlatformConfig(platform).bg + ' ' + getPlatformConfig(platform).color;
 
   return (
-    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-1000 pb-10">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+    <div className="pb-10">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
         <div>
-          <h1 className="text-4xl font-black text-primary tracking-tight">Unified <span className="text-primary italic">Inbox</span></h1>
-          <p className="text-muted-foreground mt-2 font-medium tracking-wide">Multi-channel communication node.</p>
+          <h1 className="text-4xl font-black text-foreground tracking-tight">Unified inbox</h1>
+          <p className="font-mono text-sm text-muted-foreground mt-1">Multi-channel communication hub</p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="relative w-72">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <div className="flex items-center gap-3">
+          <div className="relative w-64">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search conversations..."
+              placeholder="Search..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              className="pl-12 h-12 bg-white/[0.02]"
+              className="pl-10"
             />
           </div>
-          <Button variant="secondary" onClick={() => fetchConversations()} className="h-12 w-12 p-0 rounded-2xl border-white/[0.05]">
-            <RefreshCw className="w-5 h-5" />
+          <Button variant="secondary" size="icon" onClick={() => fetchConversations()}>
+            <RefreshCw className="w-4 h-4" />
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-        {/* Conversations List */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Conversations list */}
         <div className="lg:col-span-1 space-y-4">
-          <div className="px-2 mb-4">
-            <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Active Channels</h3>
-          </div>
+          <p className="font-mono text-xs text-muted-foreground px-1 mb-2">Active channels</p>
           {loading ? (
             <div className="flex flex-col items-center justify-center py-24 gap-4">
-              <div className="w-12 h-12 rounded-full border-t-2 border-primary animate-spin" />
-              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Syncing Hub...</p>
+              <div className="w-10 h-10 rounded-full border-2 border-border border-t-[var(--color-accent)] animate-spin" />
+              <p className="font-mono text-sm text-muted-foreground">Loading...</p>
             </div>
           ) : conversations.length === 0 ? (
-            <Card className="py-12 text-center bg-white/[0.01] border-dashed border-white/10 rounded-[2.5rem]">
-               <MessageCircle className="w-12 h-12 mx-auto mb-4 opacity-20" />
-               <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">No active transmissions</p>
+            <Card className="py-12 text-center border-2 border-dashed border-border">
+               <MessageCircle className="w-10 h-10 mx-auto mb-3 opacity-20" />
+               <p className="font-mono text-sm text-muted-foreground">No conversations</p>
             </Card>
           ) : (
             conversations.map((conv) => (
@@ -251,129 +237,111 @@ export const MessengerConversations: React.FC = () => {
                 key={conv.id}
                 onClick={() => setSelectedConversation(conv)}
                 className={cn(
-                  "p-6 rounded-[2rem] border transition-all duration-300 group cursor-pointer relative overflow-hidden",
+                  "p-5 rounded-xl border-2 transition-colors duration-150 cursor-pointer relative",
                   selectedConversation?.id === conv.id
-                    ? 'bg-[#1a1a1a] border-primary/30 shadow-2xl shadow-primary/5'
-                    : 'bg-[#0d0d0d] border-white/[0.05] hover:border-white/20 hover:bg-white/[0.02]'
+                    ? 'bg-[var(--color-paper-3)] border-[var(--color-accent)]/30'
+                    : 'bg-card border-border hover:border-[var(--color-border-hover)]'
                 )}
               >
-                {selectedConversation?.id === conv.id && <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-primary" />}
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-4">
-                    <div className={cn("w-12 h-12 rounded-[1.25rem] flex items-center justify-center transition-transform group-hover:scale-110", getPlatformColor(conv.platform))}>
+                {selectedConversation?.id === conv.id && <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-[var(--color-accent)]" />}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center", getPlatformColor(conv.platform))}>
                       {getPlatformIcon(conv.platform)}
                     </div>
                     <div>
-                      <p className="font-black text-white text-base tracking-tight italic">{conv.customer_name}</p>
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">{formatDate(conv.updated_at)}</p>
+                      <p className="font-bold text-sm text-foreground">{conv.customer_name}</p>
+                      <p className="font-mono text-xs text-muted-foreground mt-0.5">{formatDate(conv.updated_at)}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {conv.ai_mode ? (
-                      <div className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                    ) : (
-                      <div className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
-                    )}
-                  </div>
+                  <div className={cn(
+                    "w-2 h-2 rounded-sm",
+                    conv.ai_mode ? "bg-[var(--color-accent)]" : "bg-[var(--color-warning)]"
+                  )} />
                 </div>
-                <p className={cn(
-                  "text-sm font-medium line-clamp-1 transition-colors",
-                  selectedConversation?.id === conv.id ? "text-white" : "text-muted-foreground group-hover:text-white/80"
-                )}>
-                  {conv.last_message || 'No messages received'}
+                <p className="font-mono text-xs text-muted-foreground truncate">
+                  {conv.last_message || 'No messages'}
                 </p>
               </div>
             ))
           )}
         </div>
 
-        {/* Conversation Detail */}
+        {/* Conversation detail */}
         <div className="lg:col-span-2">
           {selectedConversation ? (
-            <Card className="h-[750px] flex flex-col bg-[#0d0d0d] border-white/[0.05] rounded-[3rem] overflow-hidden shadow-2xl relative">
-              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary to-transparent opacity-50" />
-              
+            <Card className="h-[700px] flex flex-col p-0 overflow-hidden relative">
               {/* Header */}
-              <div className="p-8 border-b border-white/[0.03] bg-black/[0.1]">
+              <div className="p-6 border-b border-border bg-[var(--color-paper-2)]">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-5">
-                    <div className={cn("w-14 h-14 rounded-[1.5rem] flex items-center justify-center shadow-xl", getPlatformColor(selectedConversation.platform))}>
+                  <div className="flex items-center gap-4">
+                    <div className={cn("w-12 h-12 rounded-lg flex items-center justify-center", getPlatformColor(selectedConversation.platform))}>
                       {getPlatformIcon(selectedConversation.platform)}
                     </div>
                     <div>
-                      <h2 className="text-xl font-black text-white italic tracking-tight">{selectedConversation.customer_name}</h2>
-                      <div className="flex items-center gap-4 mt-1">
-                        <Badge variant={selectedConversation.ai_mode ? 'primary' : 'warning'} className="px-2 py-0.5 rounded-md">
-                           {selectedConversation.ai_mode ? 'Neural Core Active' : 'Human Operator'}
+                      <h2 className="text-lg font-black text-foreground tracking-tight">{selectedConversation.customer_name}</h2>
+                      <div className="flex items-center gap-3 mt-0.5">
+                        <Badge variant={selectedConversation.ai_mode ? 'primary' : 'warning'}>
+                           {selectedConversation.ai_mode ? 'AI active' : 'Human operator'}
                         </Badge>
-                        <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest opacity-60">ID: {selectedConversation.platform_user_id}</span>
+                        <span className="font-mono text-xs text-muted-foreground">ID: {selectedConversation.platform_user_id}</span>
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <Button variant="secondary" className="h-11 px-6 rounded-xl border-white/5 font-black text-[10px] uppercase tracking-widest" onClick={() => setSelectedConversation(null)}>
-                      <ArrowLeft className="w-4 h-4 mr-2" />
-                      Close Hub
+                  <div className="flex items-center gap-2">
+                    <Button variant="secondary" size="sm" onClick={() => setSelectedConversation(null)} className="gap-2">
+                      <ArrowLeft className="w-4 h-4" /> Back
                     </Button>
                     {selectedConversation.ai_mode ? (
-                      <Button variant="premium" className="h-11 px-6 rounded-xl font-black text-[10px] uppercase tracking-widest" onClick={handleTakeOver}>
-                        <Hand className="w-4 h-4 mr-2" />
-                        Take Over
+                      <Button variant="primary" size="sm" onClick={handleTakeOver} className="gap-2">
+                        <Hand className="w-4 h-4" /> Take over
                       </Button>
                     ) : (
-                      <Button variant="outline" className="h-11 px-6 rounded-xl font-black text-[10px] uppercase tracking-widest border-primary/20 text-primary hover:bg-primary/5" onClick={handleReturnToAI}>
-                        <Bot className="w-4 h-4 mr-2" />
-                        Return to AI
+                      <Button variant="outline" size="sm" onClick={handleReturnToAI} className="gap-2 border-[var(--color-accent)] text-[var(--color-accent)]">
+                        <Bot className="w-4 h-4" /> Return to AI
                       </Button>
                     )}
                   </div>
                 </div>
               </div>
-              
+
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-10 space-y-8 scroll-smooth">
+              <div className="flex-1 overflow-y-auto p-8 space-y-6">
                 {selectedConversation.messages?.length === 0 && (
-                  <div className="h-full flex flex-col items-center justify-center text-muted-foreground opacity-20">
-                    <MessageCircle className="w-16 h-16 mb-4" />
-                    <p className="font-black uppercase tracking-widest text-xs">Awaiting data stream</p>
+                  <div className="h-full flex flex-col items-center justify-center opacity-20">
+                    <MessageCircle className="w-12 h-12 mb-3" />
+                    <p className="font-mono text-xs">No messages yet</p>
                   </div>
                 )}
                 {selectedConversation.messages?.map((msg, idx) => (
                   <div
                     key={msg.id || idx}
                     className={cn(
-                      "flex gap-5 group animate-in fade-in slide-in-from-bottom-2 duration-500",
+                      "flex gap-4",
                       msg.sender === 'customer' ? 'flex-row-reverse' : ''
                     )}
                   >
                     <div className={cn(
-                      "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-lg transition-transform group-hover:scale-110",
-                      msg.sender === 'customer' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 
-                      msg.sender === 'admin' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-primary/10 text-primary border border-primary/20'
+                      "w-9 h-9 rounded-lg flex items-center justify-center shrink-0 border-2",
+                      msg.sender === 'customer' ? 'border-blue-500/30 bg-blue-500/10 text-blue-400' :
+                      msg.sender === 'admin' ? 'border-[var(--color-success)]/30 bg-[var(--color-success)]/10 text-[var(--color-success)]' : 'border-[var(--color-accent)]/30 bg-[var(--color-accent)]/10 text-[var(--color-accent)]'
                     )}>
-                      {msg.sender === 'customer' ? (
-                        <User className="w-5 h-5" />
-                      ) : (
-                        <Bot className="w-5 h-5" />
-                      )}
+                      {msg.sender === 'customer' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
                     </div>
-                    <div className={cn(
-                      "max-w-[75%] space-y-2",
-                      msg.sender === 'customer' ? 'items-end' : 'items-start'
-                    )}>
+                    <div className={cn("max-w-[75%] space-y-1")}>
                       <div className={cn(
-                        "rounded-[1.75rem] px-6 py-4 shadow-2xl relative",
+                        "rounded-lg px-5 py-3 border-2 text-sm leading-relaxed",
                         msg.sender === 'customer'
-                          ? 'bg-blue-500/5 text-white border border-blue-500/10'
+                          ? 'bg-blue-500/5 text-foreground border-blue-500/10'
                           : msg.sender === 'admin'
-                          ? 'bg-emerald-500/5 text-white border border-emerald-500/10'
-                          : 'bg-primary/5 text-white border border-primary/10'
+                          ? 'bg-[var(--color-success)]/5 text-foreground border-[var(--color-success)]/10'
+                          : 'bg-[var(--color-accent)]/5 text-foreground border-[var(--color-accent)]/10'
                       )}>
-                        <p className="text-sm font-medium leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                        <p className="whitespace-pre-wrap">{msg.content}</p>
                       </div>
                       <p className={cn(
-                        "text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-50 flex items-center gap-1.5 px-2",
-                        msg.sender === 'customer' ? 'flex-row-reverse' : ''
+                        "font-mono text-xs text-muted-foreground flex items-center gap-1",
+                        msg.sender === 'customer' ? 'justify-end' : ''
                       )}>
                         <Clock className="w-2.5 h-2.5" />
                         {formatTime(msg.created_at)}
@@ -384,11 +352,11 @@ export const MessengerConversations: React.FC = () => {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Message Input */}
-              <div className="p-8 border-t border-white/[0.03] bg-black/[0.1]">
-                <div className="flex gap-4 p-2 bg-white/[0.02] border border-white/[0.05] rounded-[2rem] focus-within:border-primary/50 transition-all shadow-inner">
+              {/* Input */}
+              <div className="p-6 border-t border-border bg-[var(--color-paper-2)]">
+                <div className="flex gap-3 items-end">
                   <textarea
-                    placeholder="Type a secure message..."
+                    placeholder="Type a message..."
                     value={messageInput}
                     onChange={(e) => setMessageInput(e.target.value)}
                     onKeyDown={(e) => {
@@ -397,29 +365,29 @@ export const MessengerConversations: React.FC = () => {
                           handleSendMessage();
                        }
                     }}
-                    className="flex-1 bg-transparent border-none focus:ring-0 text-sm text-white font-medium py-3 px-6 h-12 resize-none"
+                    className="flex-1 bg-card border-2 border-border rounded-lg px-4 py-3 text-sm text-foreground focus:outline-none focus:border-[var(--color-accent)] transition-all h-12 resize-none"
                     disabled={sending}
                   />
-                  <Button 
-                    onClick={handleSendMessage} 
+                  <Button
+                    onClick={handleSendMessage}
                     disabled={sending || !messageInput.trim()}
-                    variant="premium"
-                    className="h-12 w-12 p-0 rounded-2xl shadow-lg"
+                    variant="primary"
+                    className="w-12 h-12 p-0 shrink-0"
                   >
-                    <Send className="w-5 h-5 rotate-45 -translate-y-0.5" />
+                    <Send className="w-5 h-5" />
                   </Button>
                 </div>
               </div>
             </Card>
           ) : (
-            <Card className="h-[750px] flex items-center justify-center bg-[#0d0d0d] border-white/[0.05] border-dashed rounded-[3rem]">
-              <div className="text-center space-y-6">
-                <div className="w-24 h-24 rounded-[2rem] bg-white/[0.02] border border-white/[0.05] flex items-center justify-center mx-auto shadow-2xl group hover:border-primary/30 transition-all duration-500">
-                   <MessageCircle className="w-10 h-10 text-muted-foreground group-hover:text-primary transition-colors opacity-30 group-hover:opacity-100" />
+            <Card className="h-[700px] flex items-center justify-center border-2 border-dashed border-border">
+              <div className="text-center space-y-4">
+                <div className="w-20 h-20 rounded-xl bg-[var(--color-paper-3)] border-2 border-border flex items-center justify-center mx-auto">
+                   <MessageCircle className="w-8 h-8 text-muted-foreground opacity-30" />
                 </div>
                 <div>
-                   <p className="text-sm font-black text-white uppercase tracking-[0.2em] italic">Stream Standby</p>
-                   <p className="text-[11px] text-muted-foreground font-bold uppercase tracking-widest mt-2">Select a vector to begin communication</p>
+                   <p className="font-black text-base text-foreground tracking-tight">No conversation selected</p>
+                   <p className="font-mono text-sm text-muted-foreground mt-1">Select a channel to start</p>
                 </div>
               </div>
             </Card>
@@ -429,4 +397,3 @@ export const MessengerConversations: React.FC = () => {
     </div>
   );
 };
-
