@@ -1,14 +1,11 @@
-import { query } from '../config/db';
-import * as fs from 'fs';
-import * as path from 'path';
+import prisma from '../config/db.js';
 
 async function runMigrations() {
   console.log('🚀 Starting database migrations...');
 
   try {
-    // 1. Messaging Tables (handled in conversationDb.ts usually, but we'll ensure here)
     console.log('📦 Creating messaging tables...');
-    await query(`
+    await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS conversations (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         platform_user_id VARCHAR(255) NOT NULL,
@@ -26,7 +23,7 @@ async function runMigrations() {
       )
     `);
 
-    await query(`
+    await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS messages (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
@@ -39,9 +36,8 @@ async function runMigrations() {
       )
     `);
 
-    // 2. Bots Table
     console.log('📦 Creating bots table...');
-    await query(`
+    await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS bots (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         name TEXT NOT NULL,
@@ -53,9 +49,8 @@ async function runMigrations() {
       )
     `);
 
-    // 3. Orders Table (Cache for historical fraud scoring)
     console.log('📦 Creating orders table...');
-    await query(`
+    await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS orders (
         id SERIAL PRIMARY KEY,
         order_id VARCHAR(50) UNIQUE NOT NULL,
@@ -68,9 +63,8 @@ async function runMigrations() {
       )
     `);
 
-    // 4. Fraud Checks Table (From 001_fraud_checks.sql)
     console.log('📦 Creating fraud_checks table...');
-    await query(`
+    await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS fraud_checks (
         id SERIAL PRIMARY KEY,
         order_id VARCHAR(50) UNIQUE NOT NULL,
@@ -92,13 +86,12 @@ async function runMigrations() {
       )
     `);
 
-    // 5. Indexes
     console.log('📦 Creating indexes...');
-    await query(`CREATE INDEX IF NOT EXISTS idx_conversations_platform_user ON conversations(platform_user_id)`);
-    await query(`CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id)`);
-    await query(`CREATE INDEX IF NOT EXISTS idx_fraud_checks_status ON fraud_checks(status)`);
-    await query(`CREATE INDEX IF NOT EXISTS idx_orders_phone ON orders(customer_phone)`);
-    await query(`CREATE INDEX IF NOT EXISTS idx_orders_email ON orders(customer_email)`);
+    await prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS idx_conversations_platform_user ON conversations(platform_user_id)');
+    await prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id)');
+    await prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS idx_fraud_checks_status ON fraud_checks(status)');
+    await prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS idx_orders_phone ON orders(customer_phone)');
+    await prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS idx_orders_email ON orders(customer_email)');
 
     console.log('✅ All migrations completed successfully!');
     process.exit(0);

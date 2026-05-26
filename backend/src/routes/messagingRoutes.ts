@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
-import * as db from '../services/messaging/conversationDb';
-import { query } from '../config/db';
-import { ConversationOrchestrator } from '../services/messaging/ConversationOrchestrator';
+import * as db from '../services/messaging/conversationDb.js';
+import prisma from '../config/db.js';
+import { ConversationOrchestrator } from '../services/messaging/ConversationOrchestrator.js';
 
 const router = Router();
 
@@ -170,15 +170,17 @@ router.patch('/api/messaging/conversations/:id', async (req: Request, res: Respo
 // Get messaging stats
 router.get('/api/messaging/stats', async (req: Request, res: Response) => {
   try {
-    const result = await query(`
-      SELECT 
-        COUNT(*) as total_conversations,
-        COUNT(*) FILTER (WHERE status = 'active') as active,
-        COUNT(*) FILTER (WHERE ai_mode = false) as human_mode,
-        COUNT(*) FILTER (WHERE DATE(created_at) = CURRENT_DATE) as today
-      FROM conversations
-    `);
-    res.json(result.rows[0]);
+    const [total_conversations, active, human_mode, today] = await Promise.all([
+      prisma.conversation.count(),
+      prisma.conversation.count({ where: { status: 'active' } }),
+      prisma.conversation.count({ where: { aiMode: false } }),
+      prisma.conversation.count({
+        where: {
+          createdAt: { gte: new Date(new Date().toDateString()) },
+        },
+      }),
+    ]);
+    res.json({ total_conversations, active, human_mode, today });
   } catch (error: any) {
     console.error('[API] Stats error:', error.message);
     res.status(500).json({ error: error.message });

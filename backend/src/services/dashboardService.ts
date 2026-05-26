@@ -1,6 +1,6 @@
-import { ShopifyService } from './shopifyService';
-import { WooCommerceService } from './woocommerceService';
-import { NotificationService } from './notificationService';
+import { ShopifyService } from './shopifyService.js';
+import { WooCommerceService } from './woocommerceService.js';
+import { NotificationService } from './notificationService.js';
 
 function getCMS() {
   return (process.env.CMS || 'shopify').toLowerCase();

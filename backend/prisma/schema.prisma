@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Bot {
+  id                String   @id @default(uuid()) @db.Uuid
+  name              String
+  systemInstruction String?  @map("system_instruction")
+  primaryColor      String   @default("#10b981") @map("primary_color")
+  welcomeMessage    String   @default("Hello! How can I help you?") @map("welcome_message")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime @default(now()) @map("updated_at") @db.Timestamptz
+
+  @@map("bots")
+}
+
+model Conversation {
+  id             String    @id @default(uuid()) @db.Uuid
+  platformUserId String    @map("platform_user_id")
+  platform       String    @default("facebook")
+  customerName   String?   @map("customer_name")
+  customerPhone  String?   @map("customer_phone")
+  profilePic     String?   @map("profile_pic")
+  status         String    @default("active")
+  aiMode         Boolean   @default(true) @map("ai_mode")
+  assignedTo     String?   @map("assigned_to")
+  lastMessage    String?   @map("last_message")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @default(now()) @map("updated_at")
+  messages       Message[]
+
+  @@unique([platformUserId, platform])
+  @@index([status])
+  @@map("conversations")
+}
+
+model Message {
+  id                String       @id @default(uuid()) @db.Uuid
+  conversationId    String       @map("conversation_id") @db.Uuid
+  sender            String
+  senderId          String?      @map("sender_id")
+  senderName        String?      @map("sender_name")
+  content           String
+  platformMessageId String?      @map("platform_message_id")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  conversation      Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@map("messages")
+}
+
+model Order {
+  id             Int      @id @default(autoincrement())
+  orderId        String   @unique @map("order_id")
+  totalPrice     String?  @map("total_price")
+  customerPhone  String?  @map("customer_phone")
+  customerEmail  String?  @map("customer_email")
+  status         String?
+  refundStatus   String?  @map("refund_status")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([customerPhone])
+  @@index([customerEmail])
+  @@map("orders")
+}
+
+model FraudCheck {
+  id               Int      @id @default(autoincrement())
+  orderId          String   @unique @map("order_id")
+  orderNumber      String?  @map("order_number")
+  customerName     String?  @map("customer_name")
+  customerPhone    String?  @map("customer_phone")
+  customerEmail    String?  @map("customer_email")
+  billingCountry   String?  @map("billing_country")
+  shippingCountry  String?  @map("shipping_country")
+  shippingAddress  String?  @map("shipping_address")
+  amount           Decimal  @db.Decimal(10, 2)
+  riskScore        Int      @default(0) @map("risk_score")
+  riskLevel        String   @default("safe") @map("risk_level")
+  redFlags         Json     @default("[]") @map("red_flags")
+  status           String   @default("pending")
+  scannedAt        DateTime @default(now()) @map("scanned_at")
+  reviewedAt       DateTime? @map("reviewed_at")
+  reviewedBy       String?  @map("reviewed_by")
+
+  @@index([status])
+  @@index([riskLevel])
+  @@index([scannedAt])
+  @@map("fraud_checks")
+}
+
+model SystemSetting {
+  key       String   @id @db.VarChar(100)
+  value     Json
+  updatedAt DateTime @default(now()) @map("updated_at")
+
+  @@map("system_settings")
+}

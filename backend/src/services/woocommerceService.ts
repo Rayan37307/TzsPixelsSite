@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { NotificationService } from './notificationService';
+import { NotificationService } from './notificationService.js';
 
 interface WooCommerceStore {
   url: string;

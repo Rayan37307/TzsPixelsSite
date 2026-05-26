@@ -1,6 +1,6 @@
-import { FacebookAdapter } from '../messaging/FacebookAdapter';
-import { WooCommerceService } from '../woocommerceService';
-import { query } from '../../config/db';
+import { FacebookAdapter } from '../messaging/FacebookAdapter.js';
+import { WooCommerceService } from '../woocommerceService.js';
+import prisma from '../../config/db.js';
 
 interface ChatContext {
   conversationId: string;
@@ -26,13 +26,12 @@ export class ChatbotService {
 
   static async checkUserOrderHistory(phone: string): Promise<ToolResult> {
     try {
-      // Query WooCommerce orders for this phone
       if (WooCommerceService.isConfigured()) {
         const orders = await WooCommerceService.fetchOrders();
-        const userOrders = orders.filter((o: any) => 
+        const userOrders = orders.filter((o: any) =>
           o.phone?.includes(phone) || o.customer?.includes(phone)
         );
-        
+
         if (userOrders.length > 0) {
           const successfulOrders = userOrders.filter((o: any) => o.status === 'Delivered').length;
           const successRate = (successfulOrders / userOrders.length) * 100;
@@ -60,17 +59,16 @@ export class ChatbotService {
       }
 
       if (productId) {
-        // Get single product - would need to add method to WooCommerceService
         return { success: true, data: { message: 'Product lookup by ID not yet implemented' } };
       }
 
       if (search) {
         const products = await WooCommerceService.getProducts();
-        const matched = products.filter((p: any) => 
+        const matched = products.filter((p: any) =>
           p.name?.toLowerCase().includes(search.toLowerCase()) ||
           p.description?.toLowerCase().includes(search.toLowerCase())
         ).slice(0, 5);
-        
+
         return {
           success: true,
           data: {
@@ -105,7 +103,6 @@ export class ChatbotService {
         return { success: false, error: 'WooCommerce not configured' };
       }
 
-      // Create order in WooCommerce
       const order = await WooCommerceService.createOrder({
         billing: {
           first_name: orderData.customerName.split(' ')[0],
@@ -141,29 +138,25 @@ export class ChatbotService {
       return 'আমাদের সিস্টেমে সমস্যা হচ্ছে। অনুগ্রহ করে কিছুক্ষণ পরে চেষ্টা করুন।';
     }
 
-    // Get conversation history
-    const historyResult = await query(
-      `SELECT sender, content FROM messages 
-       WHERE conversation_id = $1 
-       ORDER BY created_at DESC LIMIT 10`,
-      [context.conversationId]
-    );
-    const history = historyResult.rows.reverse();
+    const historyRows = await prisma.message.findMany({
+      where: { conversationId: context.conversationId },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+      select: { sender: true, content: true },
+    });
+    const history = historyRows.reverse();
 
-    // Build conversation context
-    const conversationHistory = history.map(m => 
+    const conversationHistory = history.map(m =>
       `${m.sender === 'ai' ? 'AI' : 'গ্রাহক'}: ${m.content}`
     ).join('\n');
 
-    // Check for human takeover trigger
-    if (userMessage.toLowerCase().includes('মানুষ') || 
+    if (userMessage.toLowerCase().includes('মানুষ') ||
         userMessage.toLowerCase().includes('এজেন্ট') ||
         userMessage.toLowerCase().includes('talk to human') ||
         userMessage.toLowerCase().includes('কথা বলতে চাই')) {
       return 'আপনার অনুরোধে আমাদা টিমের সাথে কথা বলার জন্য আপনাকে সংযুক্ত করছি। অনুগ্রহ করে অপেক্ষা করুন।';
     }
 
-    // Build prompt with tools
     const systemPrompt = this.buildSystemPrompt(context);
     const fullPrompt = `${systemPrompt}
 
@@ -172,7 +165,7 @@ ${conversationHistory}
 
 গ্রাহকের নতুন বার্তা: ${userMessage}
 
-নির্দেশনা: 
+নির্দেশনা:
 - প্রথমে গ্রাহকের অর্ডার ইতিহাস চেক করুন (ফোন নম্বর দিয়ে)
 - তারপর প্রোডাক্ট সার্চ করুন প্রয়োজনে
 - অর্ডার নেওয়ার আগে অবশ্যই অর্ডার ইতিহাস চেক করুন
@@ -185,7 +178,6 @@ ${conversationHistory}
       console.log('[Chatbot] Customer:', context.customerName, '| Phone:', context.customerPhone);
       console.log('[Chatbot] Conversation history count:', history.length);
 
-      // Call Gemini API
       console.log('[Chatbot] Calling Gemini API...');
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${this.GEMINI_API_KEY}`,
@@ -207,13 +199,11 @@ ${conversationHistory}
       const data = await response.json();
       console.log('[Chatbot] Gemini raw response:', JSON.stringify(data, null, 2));
 
-      // Check for API errors
       if (data.error) {
         console.error('[Chatbot] Gemini API error:', data.error);
         return 'দুঃখিত, AI সার্ভারে সমস্যা হয়েছে। আবার চেষ্টা করুন।';
       }
 
-      // Check for empty response
       const rawResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
       console.log('[Chatbot] Raw AI response:', rawResponse);
 
@@ -224,12 +214,9 @@ ${conversationHistory}
 
       const aiResponse = rawResponse;
 
-      // Parse if AI wants to call a tool (simple implementation)
       const responseLower = aiResponse.toLowerCase();
-      
-      // Handle order if detected in response
+
       if (responseLower.includes('অর্ডার') || responseLower.includes('order confirmed')) {
-        // AI should have handled the order, just respond
       }
 
       return aiResponse;

@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { BotModel } from '../models/Bot';
-import { AIService } from '../services/aiService';
+import { BotModel } from '../models/Bot.js';
+import { AIService } from '../services/aiService.js';
 
 const router = Router();
 
@@ -59,7 +59,7 @@ router.post('/:id/chat', async (req, res) => {
       return res.status(404).json({ error: "Bot not found" });
     }
 
-    const response = await AIService.chat(message, history || [], bot.system_instruction);
+    const response = await AIService.chat(message, history || [], bot.system_instruction ?? undefined);
     res.json({ response });
   } catch (error: any) {
     res.status(500).json({ error: error.message });

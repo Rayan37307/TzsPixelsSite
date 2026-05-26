@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import * as db from '../services/messaging/conversationDb';
+import * as db from '../services/messaging/conversationDb.js';
 
 const router = Router();
 

@@ -1,17 +1,18 @@
-import pool from '../config/db';
+import prisma from '../config/db.js';
 
 async function updateBotsColor() {
   console.log('🔄 Checking and updating existing bot colors in database...');
   try {
-    const result = await pool.query(
-      "UPDATE bots SET primary_color = '#10b981' WHERE primary_color = '#7c3aed' OR primary_color IS NULL OR primary_color = '' RETURNING *"
+    const result = await prisma.$executeRawUnsafe(
+      "UPDATE bots SET primary_color = '#10b981' WHERE primary_color = '#7c3aed' OR primary_color IS NULL OR primary_color = ''"
     );
-    console.log(`✅ Successfully updated ${result.rowCount} bot(s) to emerald green!`);
-    
-    // Also, let's log the details of all bots currently in the database to be absolutely sure
-    const allBots = await pool.query("SELECT id, name, primary_color FROM bots");
-    console.log('🤖 Current bots in DB:', allBots.rows);
-    
+    console.log(`✅ Successfully updated ${result} bot(s) to emerald green!`);
+
+    const allBots = await prisma.bot.findMany({
+      select: { id: true, name: true, primaryColor: true },
+    });
+    console.log('🤖 Current bots in DB:', allBots);
+
     process.exit(0);
   } catch (error) {
     console.error('❌ Failed to update bot colors in database:', error);

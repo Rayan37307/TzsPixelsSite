@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { ShopifyService } from '../services/shopifyService';
-import { NotificationService } from '../services/notificationService';
+import { ShopifyService } from '../services/shopifyService.js';
+import { NotificationService } from '../services/notificationService.js';
 
 const router = Router();
 

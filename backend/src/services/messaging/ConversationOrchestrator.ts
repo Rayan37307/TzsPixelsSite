@@ -1,6 +1,6 @@
-import { FacebookAdapter } from '../messaging/FacebookAdapter';
-import { ChatbotService } from '../chatbot/ChatbotService';
-import * as db from '../messaging/conversationDb';
+import { FacebookAdapter } from '../messaging/FacebookAdapter.js';
+import { ChatbotService } from '../chatbot/ChatbotService.js';
+import * as db from '../messaging/conversationDb.js';
 
 export class ConversationOrchestrator {
   static async handleIncomingMessage(
@@ -37,13 +37,13 @@ export class ConversationOrchestrator {
         conversation_id: conversation.id,
         sender: 'customer',
         sender_id: platformUserId,
-        sender_name: conversation.customer_name,
+        sender_name: conversation.customerName ?? undefined,
         content: messageText,
         platform_message_id: platformMessageId
       });
 
       // Check if human takeover
-      if (!conversation.ai_mode) {
+      if (!conversation.aiMode) {
         // Human mode - just log, don't respond via AI
         console.log(`[Orchestrator] Conversation ${conversation.id} in human mode - awaiting admin response`);
         return;
@@ -71,8 +71,8 @@ export class ConversationOrchestrator {
       const aiResponse = await ChatbotService.processMessage({
         conversationId: conversation.id,
         platformUserId,
-        customerName: conversation.customer_name,
-        customerPhone: conversation.customer_phone || undefined
+        customerName: conversation.customerName ?? 'Customer',
+        customerPhone: conversation.customerPhone ?? undefined
       }, messageText);
 
       console.log(`[Orchestrator] AI response received: "${aiResponse.substring(0, 100)}..."`);
@@ -126,7 +126,7 @@ export class ConversationOrchestrator {
     }
 
     // Send via Facebook
-    await FacebookAdapter.sendTextMessage(conversation.platform_user_id, message);
+    await FacebookAdapter.sendTextMessage(conversation.platformUserId, message);
 
     // Save to database
     await db.addMessage({

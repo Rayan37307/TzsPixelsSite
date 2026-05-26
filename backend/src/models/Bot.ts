@@ -1,49 +1,59 @@
-import pool from '../config/db';
+import prisma from '../config/db.js';
 
 export interface Bot {
   id: string;
   name: string;
-  system_instruction: string;
+  system_instruction: string | null;
   primary_color: string;
   welcome_message: string;
-  created_at?: string;
+  created_at?: Date;
+}
+
+function toCamelCase(bot: Partial<Bot>): any {
+  const data: any = {};
+  if (bot.name !== undefined) data.name = bot.name;
+  if (bot.system_instruction !== undefined) data.systemInstruction = bot.system_instruction;
+  if (bot.primary_color !== undefined) data.primaryColor = bot.primary_color;
+  if (bot.welcome_message !== undefined) data.welcomeMessage = bot.welcome_message;
+  return data;
+}
+
+function fromPrisma(bot: any): Bot {
+  if (!bot) return bot;
+  return {
+    id: bot.id,
+    name: bot.name,
+    system_instruction: bot.systemInstruction,
+    primary_color: bot.primaryColor,
+    welcome_message: bot.welcomeMessage,
+    created_at: bot.createdAt,
+  };
 }
 
 export class BotModel {
-  static async create(bot: Omit<Bot, 'id'>) {
-    const query = `
-      INSERT INTO bots (name, system_instruction, primary_color, welcome_message)
-      VALUES ($1, $2, $3, $4)
-      RETURNING *
-    `;
-    const values = [bot.name, bot.system_instruction, bot.primary_color, bot.welcome_message];
-    const { rows } = await pool.query(query, values);
-    return rows[0];
+  static async create(data: Omit<Bot, 'id' | 'created_at'>) {
+    const result = await prisma.bot.create({ data: toCamelCase(data) });
+    return fromPrisma(result);
   }
 
   static async findAll() {
-    const { rows } = await pool.query('SELECT * FROM bots ORDER BY created_at DESC');
-    return rows;
+    const results = await prisma.bot.findMany({ orderBy: { createdAt: 'desc' } });
+    return results.map(fromPrisma);
   }
 
   static async findById(id: string) {
-    const { rows } = await pool.query('SELECT * FROM bots WHERE id = $1', [id]);
-    return rows[0];
+    const result = await prisma.bot.findUnique({ where: { id } });
+    return fromPrisma(result);
   }
 
-  static async update(id: string, bot: Partial<Bot>) {
-    const fields = Object.keys(bot).map((key, i) => `${key} = $${i + 2}`).join(', ');
-    const values = Object.values(bot);
-    const query = `
-      UPDATE bots SET ${fields}, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $1
-      RETURNING *
-    `;
-    const { rows } = await pool.query(query, [id, ...values]);
-    return rows[0];
+  static async update(id: string, data: Partial<Bot>) {
+    const prismaData = toCamelCase(data);
+    prismaData.updatedAt = new Date();
+    const result = await prisma.bot.update({ where: { id }, data: prismaData });
+    return fromPrisma(result);
   }
 
   static async delete(id: string) {
-    await pool.query('DELETE FROM bots WHERE id = $1', [id]);
+    await prisma.bot.delete({ where: { id } });
   }
 }

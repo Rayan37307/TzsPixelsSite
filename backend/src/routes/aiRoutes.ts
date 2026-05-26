@@ -1,115 +1,111 @@
 import { Router } from 'express';
-import { AIService } from '../services/aiService';
-import { query } from '../config/db';
+import { AIService } from '../services/aiService.js';
+import prisma from '../config/db.js';
 
 const router = Router();
 
 router.get('/performance', async (req, res) => {
   try {
-    // 1. Get stats from DB
-    // AI messages sent today (since midnight local time)
-    const aiMsgsResult = await query(
-      `SELECT count(*) FROM messages WHERE sender = 'ai' AND created_at >= CURRENT_DATE`
-    );
-    const aiMsgsCount = parseInt(aiMsgsResult.rows[0]?.count || '0', 10);
+    const todayStart = new Date(new Date().toDateString());
 
-    // Customer messages received today
-    const customerMsgsResult = await query(
-      `SELECT count(*) FROM messages WHERE sender = 'customer' AND created_at >= CURRENT_DATE`
-    );
-    const customerMsgsCount = parseInt(customerMsgsResult.rows[0]?.count || '0', 10);
+    const [aiMsgsCount, customerMsgsCount, activeConvsCount, handoversCount, hourlyRows, recentAIRows] = await Promise.all([
+      prisma.message.count({
+        where: { sender: 'ai', createdAt: { gte: todayStart } },
+      }),
+      prisma.message.count({
+        where: { sender: 'customer', createdAt: { gte: todayStart } },
+      }),
+      prisma.message.findMany({
+        where: { createdAt: { gte: todayStart } },
+        select: { conversationId: true },
+        distinct: ['conversationId'],
+      }),
+      prisma.conversation.count({
+        where: { aiMode: false, updatedAt: { gte: todayStart } },
+      }),
+      prisma.$queryRawUnsafe<Array<{ hour: number; count: bigint }>>(
+        `SELECT EXTRACT(HOUR FROM created_at) as hour, count(*) as count
+         FROM messages
+         WHERE sender = 'ai' AND created_at >= CURRENT_DATE
+         GROUP BY EXTRACT(HOUR FROM created_at)
+         ORDER BY hour ASC`
+      ),
+      prisma.message.findMany({
+        where: { sender: 'ai' },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        include: {
+          conversation: {
+            select: { customerName: true },
+          },
+        },
+      }),
+    ]);
 
-    // Total active conversations today (conversations with messages today)
-    const activeConvsResult = await query(
-      `SELECT count(distinct conversation_id) FROM messages WHERE created_at >= CURRENT_DATE`
-    );
-    const activeConvsCount = parseInt(activeConvsResult.rows[0]?.count || '0', 10);
+    const activeConvsCountNum = activeConvsCount.length;
 
-    // Human handover conversations (status 'pending_human' or 'human', or ai_mode = false and updated today)
-    const handoversResult = await query(
-      `SELECT count(*) FROM conversations WHERE ai_mode = false AND updated_at >= CURRENT_DATE`
-    );
-    const handoversCount = parseInt(handoversResult.rows[0]?.count || '0', 10);
-
-    // Calculate handover rate
-    const handoverRate = activeConvsCount > 0 
-      ? Math.round((handoversCount / activeConvsCount) * 100)
+    const handoverRate = activeConvsCountNum > 0
+      ? Math.round((handoversCount / activeConvsCountNum) * 100)
       : 0;
 
-    // AI cost: say, BDT 0.05 per message
-    const costPerMessage = 0.05; 
+    const costPerMessage = 0.05;
     const totalCost = (aiMsgsCount * costPerMessage).toFixed(2);
 
-    // 2. Build hourly graph data (last 24 hours, grouped by hour)
-    const hourlyQuery = await query(`
-      SELECT EXTRACT(HOUR FROM created_at) as hour, count(*) as count
-      FROM messages
-      WHERE sender = 'ai' AND created_at >= CURRENT_DATE
-      GROUP BY EXTRACT(HOUR FROM created_at)
-      ORDER BY hour ASC
-    `);
-
-    // Create hourly buckets for today's hours up to current hour
     const currentHour = new Date().getHours();
     const hoursData = Array.from({ length: 12 }, (_, idx) => {
       const targetHour = (currentHour - 11 + idx + 24) % 24;
-      const dbMatch = hourlyQuery.rows.find(r => Math.floor(parseFloat(r.hour)) === targetHour);
+      const dbMatch = hourlyRows.find(r => Math.floor(parseFloat(String(r.hour))) === targetHour);
       const label = targetHour === 0 ? '12 AM' : targetHour === 12 ? '12 PM' : targetHour > 12 ? `${targetHour - 12} PM` : `${targetHour} AM`;
-      
-      // If there are actually zero messages in DB, provide some realistic base fallback numbers so page is not empty initially
-      let count = dbMatch ? parseInt(dbMatch.count, 10) : 0;
+
+      let count = dbMatch ? Number(dbMatch.count) : 0;
       if (aiMsgsCount === 0) {
         const mockDistribution = [1, 2, 4, 3, 2, 5, 8, 4, 3, 5, 2, 1];
         count = mockDistribution[idx];
       }
-      
+
       return {
         time: label,
         messages: count
       };
     });
 
-    // Adjust overall counts if empty so UI looks premium and populated
     const finalAiMsgsCount = aiMsgsCount || 40;
     const finalCustomerMsgsCount = customerMsgsCount || 48;
     const finalTotalCost = aiMsgsCount ? totalCost : (finalAiMsgsCount * costPerMessage).toFixed(2);
-    const finalHandoverRate = activeConvsCount ? handoverRate : 5;
+    const finalHandoverRate = activeConvsCountNum ? handoverRate : 5;
 
-    // 3. Model distribution
     const modelDistribution = [
       { name: 'Gemini 2.5 Flash', value: finalAiMsgsCount, color: '#34d399' },
       { name: 'GPT-4-Turbo', value: 0, color: '#10b981' },
       { name: 'Claude 3 Opus', value: 0, color: '#f59e0b' }
     ];
 
-    // 4. Fetch recent AI responses
-    const recentAIQuery = await query(`
-      SELECT m.id, c.customer_name as "customerName", m.content as response, 
-             m.created_at as timestamp,
-             (SELECT content FROM messages WHERE conversation_id = m.conversation_id AND sender = 'customer' AND created_at < m.created_at ORDER BY created_at DESC LIMIT 1) as query
-      FROM messages m
-      JOIN conversations c ON m.conversation_id = c.id
-      WHERE m.sender = 'ai'
-      ORDER BY m.created_at DESC
-      LIMIT 10
-    `);
-
-    const recentActions = recentAIQuery.rows.map((row: any) => {
-      const diffMs = new Date().getTime() - new Date(row.timestamp).getTime();
+    const recentActions = await Promise.all(recentAIRows.map(async (row) => {
+      const diffMs = new Date().getTime() - new Date(row.createdAt).getTime();
       const diffMins = Math.max(1, Math.floor(diffMs / 60000));
       const timeStr = diffMins < 60 ? `${diffMins}m ago` : `${Math.floor(diffMins / 60)}h ago`;
 
+      const queryMsg = await prisma.message.findFirst({
+        where: {
+          conversationId: row.conversationId,
+          sender: 'customer',
+          createdAt: { lt: row.createdAt },
+        },
+        orderBy: { createdAt: 'desc' },
+        select: { content: true },
+      });
+
       return {
         id: row.id,
-        customerName: row.customerName || 'Customer',
-        query: row.query || 'Hi, I need help',
-        response: row.response,
+        customerName: row.conversation?.customerName || 'Customer',
+        query: queryMsg?.content || 'Hi, I need help',
+        response: row.content,
         timestamp: timeStr,
         cost: `৳ ${costPerMessage.toFixed(2)}`,
         latency: `${Math.floor(800 + Math.random() * 800)}ms`,
-        status: row.response.includes('আমাদা টিমের সাথে কথা বলার') || row.response.includes('মানুষ') ? 'handover' : 'success'
+        status: row.content.includes('আমাদা টিমের সাথে কথা বলার') || row.content.includes('মানুষ') ? 'handover' : 'success'
       };
-    });
+    }));
 
     const finalRecentActions = recentActions.length > 0 ? recentActions : [
       {
@@ -170,7 +166,7 @@ router.post('/chat', async (req, res) => {
     if (!message) {
       return res.status(400).json({ error: "Message is required" });
     }
-    
+
     const response = await AIService.chat(message, history || []);
     res.json({ response });
   } catch (error: any) {

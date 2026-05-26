@@ -1,52 +1,36 @@
-import { query } from '../../config/db';
-
-export { query } from '../../config/db';
+import prisma from '../../config/db.js';
 
 export async function initializeMessagingTables(): Promise<void> {
   console.log('[Migration] Initializing messaging tables...');
-
   try {
-    // Create conversations table
-    await query(`
-      CREATE TABLE IF NOT EXISTS conversations (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        platform_user_id VARCHAR(255) NOT NULL,
-        platform VARCHAR(50) DEFAULT 'facebook',
-        customer_name VARCHAR(255),
-        customer_phone VARCHAR(50),
-        profile_pic VARCHAR(500),
-        status VARCHAR(20) DEFAULT 'active',
-        ai_mode BOOLEAN DEFAULT true,
-        assigned_to VARCHAR(255),
-        last_message TEXT,
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW(),
-        UNIQUE(platform_user_id, platform)
-      )
-    `);
-    console.log('[Migration] conversations table created/verified');
-
-    // Create messages table
-    await query(`
-      CREATE TABLE IF NOT EXISTS messages (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
-        sender VARCHAR(20) NOT NULL,
-        sender_id VARCHAR(255),
-        sender_name VARCHAR(255),
-        content TEXT NOT NULL,
-        platform_message_id VARCHAR(255),
-        created_at TIMESTAMP DEFAULT NOW()
-      )
-    `);
-    console.log('[Migration] messages table created/verified');
-
-    // Create indexes
-    await query(`CREATE INDEX IF NOT EXISTS idx_conversations_platform_user ON conversations(platform_user_id)`);
-    await query(`CREATE INDEX IF NOT EXISTS idx_conversations_status ON conversations(status)`);
-    await query(`CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id)`);
-    console.log('[Migration] Indexes created/verified');
-
+    await prisma.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS conversations (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      platform_user_id VARCHAR(255) NOT NULL,
+      platform VARCHAR(50) DEFAULT 'facebook',
+      customer_name VARCHAR(255),
+      customer_phone VARCHAR(50),
+      profile_pic VARCHAR(500),
+      status VARCHAR(20) DEFAULT 'active',
+      ai_mode BOOLEAN DEFAULT true,
+      assigned_to VARCHAR(255),
+      last_message TEXT,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(platform_user_id, platform)
+    )`);
+    await prisma.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS messages (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
+      sender VARCHAR(20) NOT NULL,
+      sender_id VARCHAR(255),
+      sender_name VARCHAR(255),
+      content TEXT NOT NULL,
+      platform_message_id VARCHAR(255),
+      created_at TIMESTAMP DEFAULT NOW()
+    )`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_conversations_platform_user ON conversations(platform_user_id)`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_conversations_status ON conversations(status)`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id)`);
     console.log('[Migration] Messaging tables ready');
   } catch (error: any) {
     console.error('[Migration] Error:', error.message);
@@ -55,20 +39,18 @@ export async function initializeMessagingTables(): Promise<void> {
 }
 
 export async function getConversations(limit = 50, offset = 0) {
-  return query(
-    `SELECT * FROM conversations 
-     ORDER BY updated_at DESC 
-     LIMIT $1 OFFSET $2`,
-    [limit, offset]
-  );
+  const rows = await prisma.conversation.findMany({
+    orderBy: { updatedAt: 'desc' },
+    take: limit,
+    skip: offset,
+  });
+  return { rows };
 }
 
 export async function getConversationByPlatformUserId(platformUserId: string, platform = 'facebook') {
-  const result = await query(
-    `SELECT * FROM conversations WHERE platform_user_id = $1 AND platform = $2`,
-    [platformUserId, platform]
-  );
-  return result.rows[0] || null;
+  return prisma.conversation.findFirst({
+    where: { platformUserId, platform },
+  });
 }
 
 export async function createConversation(data: {
@@ -78,15 +60,21 @@ export async function createConversation(data: {
   customer_phone?: string;
   profile_pic?: string;
 }) {
-  const result = await query(
-    `INSERT INTO conversations (platform_user_id, platform, customer_name, profile_pic)
-     VALUES ($1, $2, $3, $4)
-     ON CONFLICT (platform_user_id, platform) 
-     DO UPDATE SET updated_at = NOW()
-     RETURNING *`,
-    [data.platform_user_id, data.platform || 'facebook', data.customer_name || 'Customer', data.profile_pic || null]
-  );
-  return result.rows[0];
+  return prisma.conversation.upsert({
+    where: {
+      platformUserId_platform: {
+        platformUserId: data.platform_user_id,
+        platform: data.platform || 'facebook',
+      },
+    },
+    update: { updatedAt: new Date() },
+    create: {
+      platformUserId: data.platform_user_id,
+      platform: data.platform || 'facebook',
+      customerName: data.customer_name || 'Customer',
+      profilePic: data.profile_pic || null,
+    },
+  });
 }
 
 export async function updateConversation(id: string, data: Partial<{
@@ -97,21 +85,27 @@ export async function updateConversation(id: string, data: Partial<{
   assigned_to: string;
   last_message: string;
 }>) {
-  const fields = Object.keys(data).map((key, i) => `${key} = $${i + 2}`).join(', ');
-  const values = Object.values(data);
-  
-  const result = await query(
-    `UPDATE conversations SET ${fields}, updated_at = NOW() WHERE id = $1 RETURNING *`,
-    [id, ...values]
-  );
-  return result.rows[0];
+  const prismaData: any = {};
+  if (data.customer_name !== undefined) prismaData.customerName = data.customer_name;
+  if (data.customer_phone !== undefined) prismaData.customerPhone = data.customer_phone;
+  if (data.status !== undefined) prismaData.status = data.status;
+  if (data.ai_mode !== undefined) prismaData.aiMode = data.ai_mode;
+  if (data.assigned_to !== undefined) prismaData.assignedTo = data.assigned_to;
+  if (data.last_message !== undefined) prismaData.lastMessage = data.last_message;
+  prismaData.updatedAt = new Date();
+
+  return prisma.conversation.update({
+    where: { id },
+    data: prismaData,
+  });
 }
 
 export async function getConversationMessages(conversationId: string) {
-  return query(
-    `SELECT * FROM messages WHERE conversation_id = $1 ORDER BY created_at ASC`,
-    [conversationId]
-  );
+  const rows = await prisma.message.findMany({
+    where: { conversationId },
+    orderBy: { createdAt: 'asc' },
+  });
+  return { rows };
 }
 
 export async function addMessage(data: {
@@ -122,47 +116,59 @@ export async function addMessage(data: {
   content: string;
   platform_message_id?: string;
 }) {
-  const result = await query(
-    `INSERT INTO messages (conversation_id, sender, sender_id, sender_name, content, platform_message_id)
-     VALUES ($1, $2, $3, $4, $5, $6)
-     RETURNING *`,
-    [data.conversation_id, data.sender, data.sender_id || null, data.sender_name || null, data.content, data.platform_message_id || null]
-  );
-  
-  // Update conversation's last_message and updated_at
-  await query(
-    `UPDATE conversations SET last_message = $1, updated_at = NOW() WHERE id = $2`,
-    [data.content.substring(0, 200), data.conversation_id]
-  );
-  
-  return result.rows[0];
+  const result = await prisma.message.create({
+    data: {
+      conversationId: data.conversation_id,
+      sender: data.sender,
+      senderId: data.sender_id || null,
+      senderName: data.sender_name || null,
+      content: data.content,
+      platformMessageId: data.platform_message_id || null,
+    },
+  });
+
+  await prisma.conversation.update({
+    where: { id: data.conversation_id },
+    data: {
+      lastMessage: data.content.substring(0, 200),
+      updatedAt: new Date(),
+    },
+  });
+
+  return result;
 }
 
 export async function getConversationById(id: string) {
-  const result = await query(`SELECT * FROM conversations WHERE id = $1`, [id]);
-  return result.rows[0] || null;
+  return prisma.conversation.findUnique({ where: { id } });
 }
 
 export async function getAllConversations(includeMessages = false) {
-  let conversations = await query(
-    `SELECT * FROM conversations ORDER BY updated_at DESC`
-  );
-  
+  const conversations = await prisma.conversation.findMany({
+    orderBy: { updatedAt: 'desc' },
+  });
+
   if (includeMessages) {
-    for (const conv of conversations.rows) {
-      const messages = await getConversationMessages(conv.id);
-      conv.messages = messages.rows;
+    for (const conv of conversations) {
+      (conv as any).messages = await prisma.message.findMany({
+        where: { conversationId: conv.id },
+        orderBy: { createdAt: 'asc' },
+      });
     }
   }
-  
-  return conversations.rows;
+
+  return conversations;
 }
 
 export async function searchConversations(search: string) {
-  return query(
-    `SELECT * FROM conversations 
-     WHERE customer_name ILIKE $1 OR customer_phone ILIKE $1 OR last_message ILIKE $1
-     ORDER BY updated_at DESC`,
-    [`%${search}%`]
-  );
+  const rows = await prisma.conversation.findMany({
+    where: {
+      OR: [
+        { customerName: { contains: search, mode: 'insensitive' } },
+        { customerPhone: { contains: search, mode: 'insensitive' } },
+        { lastMessage: { contains: search, mode: 'insensitive' } },
+      ],
+    },
+    orderBy: { updatedAt: 'desc' },
+  });
+  return { rows };
 }
