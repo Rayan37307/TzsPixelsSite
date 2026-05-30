@@ -58,11 +58,13 @@ router.post('/webhooks/facebook', async (req: Request, res: Response) => {
         for (const change of entry.changes || []) {
           if (change.field === 'feed') {
             const val = change.value;
+            const pageId = process.env.FB_PAGE_ID;
             if (
               val.item === 'comment' &&
               val.verb === 'add' &&
               val.message &&
-              val.from?.id !== process.env.FB_PAGE_ID
+              pageId &&
+              val.from?.id !== pageId
             ) {
               console.log(`[Webhook] Comment from ${val.from?.name}: ${val.message?.substring(0, 80)}`);
               await CommentHandler.handleComment(
