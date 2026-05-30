@@ -177,4 +177,21 @@ export class FacebookAdapter {
     return mode === 'subscribe' && token === verifyToken;
   }
 
+  static async replyToComment(commentId: string, message: string): Promise<void> {
+    if (!this.isConfigured()) {
+      throw new Error('Facebook adapter not configured');
+    }
+
+    try {
+      await axios.post(
+        `https://graph.facebook.com/v21.0/${commentId}/comments`,
+        { message },
+        { params: { access_token: this.ACCESS_TOKEN } }
+      );
+    } catch (error: any) {
+      console.error('[Facebook] Reply to comment error:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+
 }
