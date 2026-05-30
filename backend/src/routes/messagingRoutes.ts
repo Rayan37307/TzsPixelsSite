@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import * as db from '../services/messaging/conversationDb.js';
 import prisma from '../config/db.js';
 import { ConversationOrchestrator } from '../services/messaging/ConversationOrchestrator.js';
+import { CommentHandler } from '../services/messaging/CommentHandler.js';
 
 const router = Router();
 
@@ -53,7 +54,25 @@ router.post('/webhooks/facebook', async (req: Request, res: Response) => {
           }
         }
 
-        // (Feed/comment event handling removed - keeping only direct Messenger automation)
+        // Handle feed events (post comments)
+        for (const change of entry.changes || []) {
+          if (change.field === 'feed') {
+            const val = change.value;
+            if (
+              val.item === 'comment' &&
+              val.verb === 'add' &&
+              val.message &&
+              val.from?.id !== process.env.FB_PAGE_ID
+            ) {
+              console.log(`[Webhook] Comment from ${val.from?.name}: ${val.message?.substring(0, 80)}`);
+              await CommentHandler.handleComment(
+                val.comment_id,
+                val.from?.name ?? 'User',
+                val.message
+              );
+            }
+          }
+        }
       }
     } else {
       console.log('[Webhook] Unknown object type:', body.object);
