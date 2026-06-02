@@ -107,6 +107,14 @@ export const fraudApi = {
   updateFraudStatus: async (orderId: string, status: string) => {
     const response = await axios.patch(`${API_BASE_URL}/fraud/results/${orderId}`, { status });
     return response.data;
+  },
+  courierCheck: async (orderId: string) => {
+    const response = await axios.post(`${API_BASE_URL}/fraud/courier-check/${orderId}`);
+    return response.data;
+  },
+  courierCheckAll: async (orderIds: string[]) => {
+    const response = await axios.post(`${API_BASE_URL}/fraud/courier-check`, { orderIds });
+    return response.data;
   }
 };
 

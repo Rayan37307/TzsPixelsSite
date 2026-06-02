@@ -9,6 +9,7 @@ import {
   Loader2,
   ShieldCheck,
   ChevronDown,
+  Truck,
 } from 'lucide-react';
 import { Card, Badge, Button } from '../components/ui/Base';
 import { cn } from '../utils/cn';
@@ -35,6 +36,20 @@ export const FraudDetection: React.FC = () => {
   const updateStatusMutation = useMutation({
     mutationFn: ({ orderId, status }: { orderId: string; status: string }) =>
       fraudApi.updateFraudStatus(orderId, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['fraudChecks'] });
+    },
+  });
+
+  const courierMutation = useMutation({
+    mutationFn: (orderId: string) => fraudApi.courierCheck(orderId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['fraudChecks'] });
+    },
+  });
+
+  const courierAllMutation = useMutation({
+    mutationFn: (orderIds: string[]) => fraudApi.courierCheckAll(orderIds),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['fraudChecks'] });
     },
@@ -75,6 +90,20 @@ export const FraudDetection: React.FC = () => {
               <ScanLine className="w-4 h-4" />
             )}
             Run scan
+          </Button>
+          <Button
+            variant="secondary"
+            size="md"
+            onClick={() => courierAllMutation.mutate(fraudList.map((i: any) => i.orderId || i.id))}
+            disabled={courierAllMutation.isPending || fraudList.length === 0}
+            className="gap-2"
+          >
+            {courierAllMutation.isPending ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Truck className="w-4 h-4" />
+            )}
+            Courier check all
           </Button>
           <Button variant="secondary" size="md">Settings</Button>
         </div>
@@ -128,9 +157,29 @@ export const FraudDetection: React.FC = () => {
                     <p className="font-mono text-xs text-muted-foreground mt-1">
                        {item.amount ? `$${item.amount.toFixed(2)}` : ''} · {(item.riskReasons || item.reasons || []).join(', ')}
                     </p>
+                    {item.courierData?.summary && (
+                      <p className="font-mono text-xs text-muted-foreground mt-1">
+                        Courier: {item.courierData.summary.success_ratio}% success
+                        {item.courierData.reports?.length ? ` · ${item.courierData.reports.length} report(s)` : ''}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                   <Button
+                     variant="secondary"
+                     size="sm"
+                     onClick={() => courierMutation.mutate(item.orderId || item.id)}
+                     disabled={courierMutation.isPending}
+                     className="gap-1.5"
+                   >
+                     {courierMutation.isPending && courierMutation.variables === (item.orderId || item.id) ? (
+                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                     ) : (
+                       <Truck className="w-3.5 h-3.5" />
+                     )}
+                     Courier
+                   </Button>
                    <Button
                      variant="secondary"
                      size="sm"
