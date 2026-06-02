@@ -1,4 +1,4 @@
-import { FacebookAdapter } from '../messaging/FacebookAdapter.js';
+import { getAdapter } from './adapterRegistry.js';
 import { ChatbotService } from '../chatbot/ChatbotService.js';
 import * as db from '../messaging/conversationDb.js';
 
@@ -6,94 +6,86 @@ export class ConversationOrchestrator {
   static async handleIncomingMessage(
     platformUserId: string,
     messageText: string,
-    platformMessageId?: string
+    platformMessageId?: string,
+    platform: string = 'facebook'
   ): Promise<void> {
-    console.log(`[Orchestrator] Processing message from ${platformUserId}: ${messageText.substring(0, 50)}`);
+    console.log(`[Orchestrator] Processing ${platform} message from ${platformUserId}: ${messageText.substring(0, 50)}`);
+
+    const adapter = getAdapter(platform);
 
     try {
-      // Get or create conversation
-      let conversation = await db.getConversationByPlatformUserId(platformUserId, 'facebook');
-      
+      let conversation = await db.getConversationByPlatformUserId(platformUserId, platform);
+
       let customerName = 'Customer';
       let profilePic: string | undefined;
-      
+
       if (!conversation) {
-        // Get user profile from Facebook
-        const userProfile = await FacebookAdapter.getUserProfile(platformUserId);
+        const userProfile = await adapter.getUserProfile(platformUserId);
         customerName = `${userProfile.first_name} ${userProfile.last_name}`.trim();
         profilePic = userProfile.profile_pic;
 
         conversation = await db.createConversation({
           platform_user_id: platformUserId,
-          platform: 'facebook',
+          platform,
           customer_name: customerName,
-          profile_pic: profilePic
+          profile_pic: profilePic,
         });
         console.log(`[Orchestrator] Created new conversation ${conversation.id}`);
       }
 
-      // Save user message
       await db.addMessage({
         conversation_id: conversation.id,
         sender: 'customer',
         sender_id: platformUserId,
         sender_name: conversation.customerName ?? undefined,
         content: messageText,
-        platform_message_id: platformMessageId
+        platform_message_id: platformMessageId,
       });
 
-      // Check if human takeover
       if (!conversation.aiMode) {
-        // Human mode - just log, don't respond via AI
         console.log(`[Orchestrator] Conversation ${conversation.id} in human mode - awaiting admin response`);
         return;
       }
 
-      // Check for human takeover trigger in message
       const takeoverTrigger = ['মানুষ', 'এজেন্ট', 'talk to human', 'কথা বলতে চাই', 'admin', 'support'];
-      const shouldTakeover = takeoverTrigger.some(t => messageText.toLowerCase().includes(t));
+      const shouldTakeover = takeoverTrigger.some((t) => messageText.toLowerCase().includes(t));
 
       if (shouldTakeover) {
-        // Update to human mode
         await db.updateConversation(conversation.id, {
           ai_mode: false,
-          status: 'pending_human'
+          status: 'pending_human',
         });
         console.log(`[Orchestrator] User requested human takeover for conversation ${conversation.id}`);
         return;
       }
 
-      // Send typing indicator
-      await FacebookAdapter.setTypingIndicator(platformUserId, 'on');
+      await adapter.setTypingIndicator(platformUserId, 'on');
 
-      // Process with AI
       console.log(`[Orchestrator] Calling ChatbotService for message: "${messageText.substring(0, 50)}..."`);
-      const aiResponse = await ChatbotService.processMessage({
-        conversationId: conversation.id,
-        platformUserId,
-        customerName: conversation.customerName ?? 'Customer',
-        customerPhone: conversation.customerPhone ?? undefined
-      }, messageText);
+      const aiResponse = await ChatbotService.processMessage(
+        {
+          conversationId: conversation.id,
+          platformUserId,
+          customerName: conversation.customerName ?? 'Customer',
+          customerPhone: conversation.customerPhone ?? undefined,
+        },
+        messageText
+      );
 
       console.log(`[Orchestrator] AI response received: "${aiResponse.substring(0, 100)}..."`);
 
-      // Send response to user
-      console.log(`[Orchestrator] Sending response to Facebook user ${platformUserId}...`);
-      await FacebookAdapter.sendTextMessage(platformUserId, aiResponse);
-      console.log(`[Orchestrator] Message sent successfully to user ${platformUserId}`);
+      await adapter.sendTextMessage(platformUserId, aiResponse);
 
-      // Save AI response
       await db.addMessage({
         conversation_id: conversation.id,
         sender: 'ai',
         sender_id: 'system',
         sender_name: 'AI Assistant',
-        content: aiResponse
+        content: aiResponse,
       });
 
-      await FacebookAdapter.setTypingIndicator(platformUserId, 'off');
+      await adapter.setTypingIndicator(platformUserId, 'off');
       console.log(`[Orchestrator] AI response sent to ${platformUserId}`);
-
     } catch (error: any) {
       console.error('[Orchestrator] Error:', error.message);
     }
@@ -125,16 +117,15 @@ export class ConversationOrchestrator {
       throw new Error('Conversation not found');
     }
 
-    // Send via Facebook
-    await FacebookAdapter.sendTextMessage(conversation.platformUserId, message);
+    const adapter = getAdapter(conversation.platform);
+    await adapter.sendTextMessage(conversation.platformUserId, message);
 
-    // Save to database
     await db.addMessage({
       conversation_id: conversationId,
       sender: 'admin',
       sender_id: 'admin',
       sender_name: 'Support Team',
-      content: message
+      content: message,
     });
   }
 }
