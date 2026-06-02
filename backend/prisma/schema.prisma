@@ -87,6 +87,8 @@ model FraudCheck {
   scannedAt        DateTime @default(now()) @map("scanned_at")
   reviewedAt       DateTime? @map("reviewed_at")
   reviewedBy       String?  @map("reviewed_by")
+  courierData      Json?     @map("courier_data")
+  courierCheckedAt DateTime? @map("courier_checked_at")
 
   @@index([status])
   @@index([riskLevel])
