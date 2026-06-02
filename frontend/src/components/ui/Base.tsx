@@ -47,7 +47,7 @@ export const CardContent: React.FC<CardProps> = ({ children, className, ...props
  */
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'link' | 'premium';
   size?: 'sm' | 'md' | 'lg' | 'icon';
 }
 
@@ -93,6 +93,17 @@ export const Button: React.FC<ButtonProps> = ({
       'bg-transparent border-2 border-[var(--color-danger-dim)] text-[var(--color-danger)] ' +
       'hover:bg-[var(--color-danger)] hover:text-white hover:border-[var(--color-danger)] ' +
       'focus-visible:ring-2 focus-visible:ring-[var(--color-danger)] ' +
+      'active:translate-y-px ' +
+      'disabled:opacity-30 disabled:pointer-events-none',
+    link:
+      'bg-transparent text-[var(--color-accent)] underline-offset-4 ' +
+      'hover:underline ' +
+      'focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] ' +
+      'disabled:opacity-30 disabled:pointer-events-none',
+    premium:
+      'bg-primary text-primary-foreground ' +
+      'hover:bg-[var(--color-accent-dim)] ' +
+      'focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 ' +
       'active:translate-y-px ' +
       'disabled:opacity-30 disabled:pointer-events-none',
   };

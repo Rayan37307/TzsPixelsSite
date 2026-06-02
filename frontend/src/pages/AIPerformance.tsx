@@ -1,16 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { aiApi } from '../services/api';
 import {
-  Cpu,
   TrendingUp,
-  Coins,
-  CheckCircle2,
   Activity,
   Clock,
-  Zap,
   AlertTriangle,
   Bot,
-  MessageCircle,
   ShieldCheck,
   UserCheck,
 } from 'lucide-react';

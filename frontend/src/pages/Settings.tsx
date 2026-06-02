@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { settingsApi } from '../services/api';
 import {
-  Zap,
   RefreshCw,
   Cpu,
   Key,

@@ -77,7 +77,7 @@ export const MessengerConversations: React.FC = () => {
   const [sending, setSending] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     fetchConversations();
@@ -99,7 +99,7 @@ export const MessengerConversations: React.FC = () => {
     pollIntervalRef.current = setInterval(() => {
       fetchConversations(false);
       if (selectedConversation) {
-        fetchConversationDetails(selectedConversation.id, false);
+        fetchConversationDetails(selectedConversation.id);
       }
     }, 5000);
   };
@@ -122,7 +122,7 @@ export const MessengerConversations: React.FC = () => {
     }
   };
 
-  const fetchConversationDetails = async (id: string, showLoading = true) => {
+  const fetchConversationDetails = async (id: string) => {
     try {
       const data = await messagingApi.getConversation(id);
       setSelectedConversation(data);
@@ -172,7 +172,7 @@ export const MessengerConversations: React.FC = () => {
     try {
       await messagingApi.sendMessage(selectedConversation.id, messageInput);
       setMessageInput('');
-      fetchConversationDetails(selectedConversation.id, false);
+      fetchConversationDetails(selectedConversation.id);
     } catch (err) {
       console.error('Send failed:', err);
     } finally {

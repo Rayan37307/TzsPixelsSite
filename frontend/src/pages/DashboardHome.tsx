@@ -298,7 +298,7 @@ export const DashboardHome: React.FC = () => {
             <Badge variant="primary" className="border-2">Live</Badge>
           </div>
           <div className="space-y-0">
-            {activityFeed.map((item: any, i: number) => (
+            {activityFeed.map((item: any) => (
               <div key={item.id} className="flex gap-4 py-3.5 border-b border-border last:border-0 group">
                 <div className={cn(
                   "w-2 h-2 rounded-sm mt-1.5 shrink-0",

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { notificationApi } from '../services/api';
 import { Card, Button, Badge } from '../components/ui/Base';
-import { ShieldAlert, ShoppingBag, Truck, UserX, Bell, CheckCircle2, MoreHorizontal } from 'lucide-react';
+import { ShieldAlert, ShoppingBag, Truck, UserX, Bell, CheckCircle2 } from 'lucide-react';
 import { cn } from '../utils/cn';
 
 export const NotificationsCenter: React.FC = () => {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Button, Badge } from '../components/ui/Base';
 import { botApi } from '../services/api';
-import { Bot, Plus, Code, Trash2, Edit2, CheckCircle2, Sparkles, Wand2, X } from 'lucide-react';
+import { Bot, Plus, Code, Trash2, Edit2, CheckCircle2, Wand2, X } from 'lucide-react';
 
 export const BotManagement: React.FC = () => {
   const [bots, setBots] = useState<any[]>([]);

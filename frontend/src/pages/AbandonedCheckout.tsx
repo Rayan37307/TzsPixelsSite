@@ -1,7 +1,7 @@
 import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, Badge, Button } from '../components/ui/Base';
-import { ShoppingCart, DollarSign, ShoppingBag, Loader2, Send, Clock, TrendingDown } from 'lucide-react';
+import { ShoppingCart, ShoppingBag, Loader2, Send, Clock, TrendingDown } from 'lucide-react';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 

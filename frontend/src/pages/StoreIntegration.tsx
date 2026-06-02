@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   RefreshCw,
-  ExternalLink,
   Plus,
   CheckCircle2,
   Copy,
