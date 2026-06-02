@@ -3,7 +3,9 @@ import {
   scanNewOrders,
   getFraudChecks,
   getFraudCheckByOrderId,
-  updateFraudCheckStatus
+  updateFraudCheckStatus,
+  runCourierCheck,
+  runCourierCheckBatch
 } from '../services/fraudDetectionService.js';
 import prisma from '../config/db.js';
 
@@ -48,6 +50,38 @@ router.post('/scan', async (req, res) => {
   } catch (error: any) {
     console.error('[Fraud Routes] Error scanning orders:', error.message);
     return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post('/courier-check', async (req, res) => {
+  try {
+    const { orderIds } = req.body;
+    if (!Array.isArray(orderIds) || orderIds.length === 0) {
+      return res.status(400).json({ success: false, error: 'orderIds must be a non-empty array' });
+    }
+    const results = await runCourierCheckBatch(orderIds);
+    return res.json({ success: true, results });
+  } catch (error: any) {
+    console.error('[Fraud Routes] Error in batch courier check:', error.message);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post('/courier-check/:orderId', async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const updated = await runCourierCheck(orderId);
+    return res.json({ success: true, data: updated });
+  } catch (error: any) {
+    const msg = error.message || 'Courier check failed';
+    if (msg.includes('not found')) {
+      return res.status(404).json({ success: false, error: msg });
+    }
+    if (msg.includes('No valid BD phone')) {
+      return res.status(400).json({ success: false, error: msg });
+    }
+    console.error('[Fraud Routes] Error in courier check:', msg);
+    return res.status(500).json({ success: false, error: msg });
   }
 });
 
