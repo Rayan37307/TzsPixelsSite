@@ -27,16 +27,16 @@ Out of scope: any comment auto-reply (FB or IG), comment→DM private reply, Ins
 
 ## API Path Decision
 
-Instagram Professional account linked to the existing Facebook Page, **same Meta app**.
+**Instagram API with Instagram Login** (`graph.instagram.com`). Chosen because the Messenger/FB-Page path did not surface `instagram_manage_messages` for this app — only `instagram_manage_comments`. The Instagram Login product exposes `instagram_business_manage_messages`, the DM permission we need.
 
-- Reuse `FB_ACCESS_TOKEN` (Page token grants Instagram access once IG permission added).
-- Reuse the **same webhook URL**; IG events arrive with `object: "instagram"` once the IG product is subscribed.
-- All calls stay on `graph.facebook.com/v21.0`.
-- New env var: `IG_BUSINESS_ACCOUNT_ID` (Instagram-scoped sender id).
-- Meta app config: subscribe `instagram` product, webhook field `messages` (DMs only — do **not** subscribe `comments`); add permission `instagram_manage_messages`.
+- Uses a dedicated **Instagram user access token** (`IG_ACCESS_TOKEN`), not the FB Page token.
+- All Instagram calls go to `https://graph.instagram.com/v21.0`.
+- Webhook still arrives with `object: "instagram"`, field `messages`; same `messaging[]` payload shape, so the parser is unchanged.
+- New env vars: `IG_BUSINESS_ACCOUNT_ID` (the account's own `user_id`, from `GET /me?fields=user_id`) and `IG_ACCESS_TOKEN`.
+- Meta app config: Instagram product → add permission `instagram_business_manage_messages` (+ `instagram_business_basic`), generate token, subscribe webhook field `messages`. App must be published to receive webhooks; live access to other users' DMs needs App Review.
 
 Key API fact:
-- **IG DM** → `POST /{IG_BUSINESS_ACCOUNT_ID}/messages`, recipient is IGSID (Instagram-scoped user id).
+- **IG DM** → `POST https://graph.instagram.com/v21.0/me/messages`, body `{ recipient: { id: IGSID }, message: { text } }`, with `IG_ACCESS_TOKEN`.
 
 ## Architecture
 
@@ -80,11 +80,11 @@ export interface MessagingAdapter {
 
 ## InstagramAdapter specifics
 
-- Base: `https://graph.facebook.com/v21.0`. Token: `FB_ACCESS_TOKEN`. Sender id: `IG_BUSINESS_ACCOUNT_ID`.
-- `isConfigured()` → both `FB_ACCESS_TOKEN` and `IG_BUSINESS_ACCOUNT_ID` present.
-- `sendTextMessage(igsid, msg)` → `POST /{IG_BUSINESS_ACCOUNT_ID}/messages`, body `{ messaging_type: 'RESPONSE', recipient: { id: igsid }, message: { text: msg } }`. Returns `message_id`.
-- `getUserProfile(igsid)` → `GET /{igsid}?fields=name,username,profile_pic`. IG returns `name`/`username` (not first/last); normalize into `NormalizedProfile` (`first_name = name || username`, `last_name = ''`). On error, fallback `{ id, first_name: 'Instagram', last_name: 'User' }`.
-- `setTypingIndicator(igsid, state)` → `POST /{IG_BUSINESS_ACCOUNT_ID}/messages` with `{ recipient: { id: igsid }, sender_action }`; swallow errors.
+- Base: `https://graph.instagram.com/v21.0`. Token: `IG_ACCESS_TOKEN`. Self-id (echo filter): `IG_BUSINESS_ACCOUNT_ID`.
+- `isConfigured()` → both `IG_ACCESS_TOKEN` and `IG_BUSINESS_ACCOUNT_ID` present.
+- `sendTextMessage(igsid, msg)` → `POST /me/messages`, body `{ recipient: { id: igsid }, message: { text: msg } }`. Returns `message_id`.
+- `getUserProfile(igsid)` → `GET /{igsid}?fields=name,username,profile_pic`. Normalize into `NormalizedProfile` (`first_name = name || username`, `last_name = ''`). On error, fallback `{ id, first_name: 'Instagram', last_name: 'User' }`.
+- `setTypingIndicator(igsid, state)` → `POST /me/messages` with `{ recipient: { id: igsid }, sender_action }`; swallow errors.
 
 ## Webhook routing
 
@@ -117,7 +117,7 @@ The handler keeps sending `200 OK` before processing.
 
 ## Config changes
 
-- Add `IG_BUSINESS_ACCOUNT_ID` to `backend/.env`. Reuse `FB_ACCESS_TOKEN`, `FB_VERIFY_TOKEN`.
+- Add `IG_BUSINESS_ACCOUNT_ID` and `IG_ACCESS_TOKEN` to `backend/.env`. FB DM still uses `FB_ACCESS_TOKEN`/`FB_PAGE_ID`; the webhook verify token `FB_VERIFY_TOKEN` is shared.
 
 ## Error handling / edge cases
 

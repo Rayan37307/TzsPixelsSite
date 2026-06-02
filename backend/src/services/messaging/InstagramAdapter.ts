@@ -1,17 +1,18 @@
 import axios from 'axios';
 import type { MessagingAdapter, NormalizedProfile } from './MessagingAdapter.js';
 
+// Instagram Login path (graph.instagram.com). Uses an Instagram user access token
+// (IG_ACCESS_TOKEN), not the Facebook Page token. Messages are sent via /me/messages.
+// IG_BUSINESS_ACCOUNT_ID is the account's own user_id, used to filter echo/self events.
 export class InstagramAdapter implements MessagingAdapter {
+  private static readonly BASE_URL = 'https://graph.instagram.com/v21.0';
+
   private get IG_ID() {
     return process.env.IG_BUSINESS_ACCOUNT_ID || '';
   }
 
   private get ACCESS_TOKEN() {
-    return process.env.FB_ACCESS_TOKEN || '';
-  }
-
-  private get BASE_URL() {
-    return `https://graph.facebook.com/v21.0/${this.IG_ID}`;
+    return process.env.IG_ACCESS_TOKEN || '';
   }
 
   isConfigured(): boolean {
@@ -24,9 +25,8 @@ export class InstagramAdapter implements MessagingAdapter {
     }
     try {
       const response = await axios.post(
-        `${this.BASE_URL}/messages`,
+        `${InstagramAdapter.BASE_URL}/me/messages`,
         {
-          messaging_type: 'RESPONSE',
           recipient: { id: recipientId },
           message: { text: message },
         },
@@ -44,7 +44,7 @@ export class InstagramAdapter implements MessagingAdapter {
       throw new Error('Instagram adapter not configured');
     }
     try {
-      const response = await axios.get(`https://graph.facebook.com/v21.0/${userId}`, {
+      const response = await axios.get(`${InstagramAdapter.BASE_URL}/${userId}`, {
         params: {
           fields: 'name,username,profile_pic',
           access_token: this.ACCESS_TOKEN,
@@ -67,7 +67,7 @@ export class InstagramAdapter implements MessagingAdapter {
     if (!this.isConfigured()) return;
     try {
       await axios.post(
-        `${this.BASE_URL}/messages`,
+        `${InstagramAdapter.BASE_URL}/me/messages`,
         {
           recipient: { id: recipientId },
           sender_action: state === 'on' ? 'typing_on' : 'typing_off',
