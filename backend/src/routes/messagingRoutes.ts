@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import * as db from '../services/messaging/conversationDb.js';
 import prisma from '../config/db.js';
 import { ConversationOrchestrator } from '../services/messaging/ConversationOrchestrator.js';
+import { parseInstagramDms } from '../services/messaging/webhookParser.js';
 
 const router = Router();
 
@@ -53,6 +54,16 @@ router.post('/webhooks/facebook', async (req: Request, res: Response) => {
           }
         }
 
+      }
+    } else if (body.object === 'instagram') {
+      res.status(200).send('OK');
+
+      const dms = parseInstagramDms(body);
+      console.log(`[Webhook] Instagram: ${dms.length} dm(s)`);
+
+      for (const dm of dms) {
+        console.log(`[Webhook] IG message from ${dm.senderId}: ${dm.text}`);
+        await ConversationOrchestrator.handleIncomingMessage(dm.senderId, dm.text, dm.mid, 'instagram');
       }
     } else {
       console.log('[Webhook] Unknown object type:', body.object);
