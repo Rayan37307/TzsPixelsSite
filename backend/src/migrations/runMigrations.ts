@@ -86,6 +86,14 @@ async function runMigrations() {
       )
     `);
 
+    console.log('📦 Adding courier columns to fraud_checks...');
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE fraud_checks ADD COLUMN IF NOT EXISTS courier_data JSONB`
+    );
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE fraud_checks ADD COLUMN IF NOT EXISTS courier_checked_at TIMESTAMP`
+    );
+
     console.log('📦 Creating indexes...');
     await prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS idx_conversations_platform_user ON conversations(platform_user_id)');
     await prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id)');

@@ -1,5 +1,7 @@
 import { ShopifyService } from './shopifyService.js';
-import { calculateRiskScore, OrderData, ScoringResult } from './fraudScoringEngine.js';
+import { calculateRiskScore, OrderData, ScoringResult, RedFlag, riskLevelFromScore } from './fraudScoringEngine.js';
+import { checkCourier, normalizeBdPhone } from './bdCourierService.js';
+import { deriveCourierRedFlags, COURIER_FLAG_NAMES } from './courierScoring.js';
 import { NotificationService } from './notificationService.js';
 import prisma from '../config/db.js';
 
@@ -32,6 +34,8 @@ export interface FraudCheckRecord {
   reviewedBy: string | null;
   createdAt: Date;
   updatedAt: Date | null;
+  courierData: any | null;
+  courierCheckedAt: Date | null;
 }
 
 function mapShopifyOrderToOrderData(order: ShopifyOrder): OrderData {
@@ -138,6 +142,8 @@ export async function scanNewOrders(): Promise<FraudCheckRecord[]> {
           reviewedBy: null,
           createdAt: fraudCheck.createdAt,
           updatedAt: null,
+          courierData: null,
+          courierCheckedAt: null,
         };
 
         if (fraudCheck.riskLevel === 'high') {
@@ -209,7 +215,9 @@ function mapRowToFraudCheck(row: any): FraudCheckRecord {
     status: row.status,
     reviewedBy: row.reviewedBy,
     createdAt: row.scannedAt,
-    updatedAt: row.reviewedAt
+    updatedAt: row.reviewedAt,
+    courierData: row.courierData ?? null,
+    courierCheckedAt: row.courierCheckedAt ?? null,
   };
 }
 
@@ -250,4 +258,59 @@ export async function getFraudCheckByOrderId(orderId: string): Promise<FraudChec
     console.error(`[Fraud Detection] Error fetching fraud check:`, error);
     throw error;
   }
+}
+
+export async function runCourierCheck(orderId: string): Promise<FraudCheckRecord> {
+  const record = await prisma.fraudCheck.findUnique({ where: { orderId } });
+  if (!record) {
+    throw new Error(`Fraud check not found for order ${orderId}`);
+  }
+
+  const phone = normalizeBdPhone(record.customerPhone || '');
+  if (!phone) {
+    throw new Error('No valid BD phone for this order');
+  }
+
+  const courierData = await checkCourier(phone);
+  const courierFlags = deriveCourierRedFlags(courierData);
+
+  const existingFlags: RedFlag[] = Array.isArray(record.redFlags)
+    ? (record.redFlags as unknown as RedFlag[])
+    : [];
+  const baseFlags = existingFlags.filter((f) => !COURIER_FLAG_NAMES.includes(f.name));
+  const mergedFlags = [...baseFlags, ...courierFlags];
+
+  const riskScore = mergedFlags.reduce((sum, f) => sum + f.points, 0);
+  const riskLevel = riskLevelFromScore(riskScore);
+
+  const redFlagsJson = JSON.parse(JSON.stringify(mergedFlags));
+  const courierJson = JSON.parse(JSON.stringify(courierData));
+
+  const updated = await prisma.fraudCheck.update({
+    where: { orderId },
+    data: {
+      redFlags: redFlagsJson,
+      riskScore,
+      riskLevel,
+      courierData: courierJson,
+      courierCheckedAt: new Date(),
+    },
+  });
+
+  return mapRowToFraudCheck(updated);
+}
+
+export async function runCourierCheckBatch(
+  orderIds: string[]
+): Promise<{ orderId: string; ok: boolean; error?: string }[]> {
+  const results: { orderId: string; ok: boolean; error?: string }[] = [];
+  for (const orderId of orderIds) {
+    try {
+      await runCourierCheck(orderId);
+      results.push({ orderId, ok: true });
+    } catch (error: any) {
+      results.push({ orderId, ok: false, error: error.message });
+    }
+  }
+  return results;
 }

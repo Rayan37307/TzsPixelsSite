@@ -185,6 +185,12 @@ export async function hasChargebackHistory(phone: string, email: string): Promis
   }
 }
 
+export function riskLevelFromScore(score: number): 'safe' | 'medium' | 'high' {
+  if (score <= 30) return 'safe';
+  if (score <= 50) return 'medium';
+  return 'high';
+}
+
 export async function calculateRiskScore(order: OrderData): Promise<ScoringResult> {
   const redFlags: RedFlag[] = [];
   let totalPoints = 0;
@@ -288,14 +294,7 @@ export async function calculateRiskScore(order: OrderData): Promise<ScoringResul
     totalPoints += 25;
   }
 
-  let riskLevel: 'safe' | 'medium' | 'high';
-  if (totalPoints <= 30) {
-    riskLevel = 'safe';
-  } else if (totalPoints <= 50) {
-    riskLevel = 'medium';
-  } else {
-    riskLevel = 'high';
-  }
+  const riskLevel = riskLevelFromScore(totalPoints);
 
   console.log(`[Fraud Scoring] Order ${order.orderNumber}: Score=${totalPoints}, Level=${riskLevel}`);
 
