@@ -4,6 +4,7 @@ import {
   ShoppingBag,
   MessageSquareCode,
   Bell,
+  ShieldAlert,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -20,6 +21,7 @@ const menuItems = [
   { icon: ShoppingBag, label: 'Orders', path: '/orders' },
   { icon: MessageSquareCode, label: 'Bot Studio', path: '/bots' },
   { icon: MessageCircle, label: 'Messenger', path: '/messenger' },
+  { icon: ShieldAlert, label: 'Fraud shield', path: '/fraud' },
   { icon: Bell, label: 'Notifications', path: '/notifications' },
   { icon: Settings, label: 'Settings', path: '/settings' },
 ];

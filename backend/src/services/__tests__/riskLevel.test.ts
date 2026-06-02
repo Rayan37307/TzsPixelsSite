@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { riskLevelFromScore } from '../fraudScoringEngine.js';
+import { riskLevelFromScore } from '../courierScoring.js';
 
 describe('riskLevelFromScore', () => {
   it('safe at <= 30', () => {

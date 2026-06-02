@@ -17,6 +17,10 @@ export class ShopifyService {
     return `https://${this.SHOP}/admin/api/${this.API_VERSION}`;
   }
 
+  static isConfigured(): boolean {
+    return !!(process.env.SHOPIFY_CLIENT_ID && process.env.SHOPIFY_CLIENT_SECRET);
+  }
+
   /**
    * Exchanges Client ID and Client Secret for an Access Token with caching
    */

@@ -1,7 +1,6 @@
 import { ShopifyService } from './shopifyService.js';
-import { calculateRiskScore, OrderData, ScoringResult, RedFlag, riskLevelFromScore } from './fraudScoringEngine.js';
 import { checkCourier, normalizeBdPhone } from './bdCourierService.js';
-import { deriveCourierRedFlags, COURIER_FLAG_NAMES } from './courierScoring.js';
+import { deriveCourierRedFlags, COURIER_FLAG_NAMES, riskLevelFromScore, RedFlag } from './courierScoring.js';
 import { NotificationService } from './notificationService.js';
 import prisma from '../config/db.js';
 
@@ -38,23 +37,6 @@ export interface FraudCheckRecord {
   courierCheckedAt: Date | null;
 }
 
-function mapShopifyOrderToOrderData(order: ShopifyOrder): OrderData {
-  const amountStr = order.amount.replace(/[^\d.]/g, '');
-  const amount = parseFloat(amountStr) || 0;
-
-  return {
-    id: order.id,
-    orderNumber: order.id.replace('SHP-', ''),
-    customerName: order.customer,
-    customerPhone: order.phone,
-    customerEmail: '',
-    billingCountry: '',
-    shippingCountry: '',
-    shippingAddress: '',
-    amount
-  };
-}
-
 export async function scanNewOrders(): Promise<FraudCheckRecord[]> {
   console.log('[Fraud Detection] Starting scan of new orders...');
 
@@ -66,98 +48,47 @@ export async function scanNewOrders(): Promise<FraudCheckRecord[]> {
 
     for (const order of orders) {
       try {
-        const orderData = mapShopifyOrderToOrderData(order);
-        const scoringResult = await calculateRiskScore(orderData);
-
         const amountStr = order.amount.replace(/[^\d.]/g, '');
         const amount = parseFloat(amountStr) || 0;
 
         const now = new Date();
-        const fraudCheck = {
-          orderId: order.id,
-          orderNumber: order.id.replace('SHP-', ''),
-          customerName: order.customer,
-          customerPhone: order.phone,
-          customerEmail: orderData.customerEmail,
-          billingCountry: orderData.billingCountry,
-          shippingCountry: orderData.shippingCountry,
-          shippingAddress: orderData.shippingAddress,
-          amount,
-          riskScore: scoringResult.riskScore,
-          riskLevel: scoringResult.riskLevel,
-          redFlags: scoringResult.redFlags,
-          status: 'pending' as const,
-          createdAt: now,
-        };
+        const orderNumber = order.id.replace('SHP-', '');
 
+        // Scan only records the order. Risk score comes solely from the
+        // BDCourier phone-number check, run via runCourierCheck.
         const existing = await prisma.fraudCheck.findUnique({
-          where: { orderId: fraudCheck.orderId },
+          where: { orderId: order.id },
           select: { status: true },
         });
 
-        const redFlagsJson = JSON.parse(JSON.stringify(fraudCheck.redFlags));
-
         const dbResult = await prisma.fraudCheck.upsert({
-          where: { orderId: fraudCheck.orderId },
+          where: { orderId: order.id },
           update: {
-            riskScore: fraudCheck.riskScore,
-            riskLevel: fraudCheck.riskLevel,
-            redFlags: redFlagsJson,
-            status: existing?.status === 'reviewed' ? 'reviewed' : fraudCheck.status,
+            customerName: order.customer,
+            customerPhone: order.phone,
+            amount,
+            status: existing?.status === 'reviewed' ? 'reviewed' : 'pending',
           },
           create: {
-            orderId: fraudCheck.orderId,
-            orderNumber: fraudCheck.orderNumber,
-            customerName: fraudCheck.customerName,
-            customerPhone: fraudCheck.customerPhone,
-            customerEmail: fraudCheck.customerEmail,
-            billingCountry: fraudCheck.billingCountry,
-            shippingCountry: fraudCheck.shippingCountry,
-            shippingAddress: fraudCheck.shippingAddress,
-            amount: fraudCheck.amount,
-            riskScore: fraudCheck.riskScore,
-            riskLevel: fraudCheck.riskLevel,
-            redFlags: redFlagsJson,
-            status: fraudCheck.status,
-            scannedAt: fraudCheck.createdAt,
-            reviewedAt: fraudCheck.createdAt,
+            orderId: order.id,
+            orderNumber,
+            customerName: order.customer,
+            customerPhone: order.phone,
+            customerEmail: '',
+            billingCountry: '',
+            shippingCountry: '',
+            shippingAddress: '',
+            amount,
+            riskScore: 0,
+            riskLevel: 'safe',
+            redFlags: [],
+            status: 'pending',
+            scannedAt: now,
+            reviewedAt: now,
           },
         });
 
-        const fraudRecord: FraudCheckRecord = {
-          id: dbResult.id,
-          orderId: fraudCheck.orderId,
-          orderNumber: fraudCheck.orderNumber,
-          customerName: fraudCheck.customerName,
-          customerPhone: fraudCheck.customerPhone,
-          customerEmail: fraudCheck.customerEmail,
-          billingCountry: fraudCheck.billingCountry,
-          shippingCountry: fraudCheck.shippingCountry,
-          shippingAddress: fraudCheck.shippingAddress,
-          amount: fraudCheck.amount,
-          riskScore: fraudCheck.riskScore,
-          riskLevel: fraudCheck.riskLevel,
-          redFlags: fraudCheck.redFlags,
-          status: fraudCheck.status,
-          reviewedBy: null,
-          createdAt: fraudCheck.createdAt,
-          updatedAt: null,
-          courierData: null,
-          courierCheckedAt: null,
-        };
-
-        if (fraudCheck.riskLevel === 'high') {
-          console.log(`[Fraud Detection] High risk detected for order ${fraudCheck.orderId}`);
-
-          await NotificationService.addNotification({
-            type: 'fraud',
-            title: 'High Risk Order Detected',
-            message: `Order ${fraudCheck.orderId} has a fraud score of ${fraudCheck.riskScore}. Review required.`,
-            time: 'Just now'
-          });
-        }
-
-        results.push(fraudRecord);
+        results.push(mapRowToFraudCheck(dbResult));
 
       } catch (error) {
         console.error(`[Fraud Detection] Error processing order ${order.id}:`, error);
@@ -296,6 +227,16 @@ export async function runCourierCheck(orderId: string): Promise<FraudCheckRecord
       courierCheckedAt: new Date(),
     },
   });
+
+  if (riskLevel === 'high') {
+    console.log(`[Fraud Detection] High risk detected for order ${orderId}`);
+    await NotificationService.addNotification({
+      type: 'fraud',
+      title: 'High Risk Order Detected',
+      message: `Order ${orderId} has a courier fraud score of ${riskScore}. Review required.`,
+      time: 'Just now',
+    });
+  }
 
   return mapRowToFraudCheck(updated);
 }

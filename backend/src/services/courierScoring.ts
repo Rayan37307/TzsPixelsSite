@@ -1,5 +1,16 @@
-import type { RedFlag } from './fraudScoringEngine.js';
 import type { CourierData } from './bdCourierService.js';
+
+export interface RedFlag {
+  name: string;
+  points: number;
+  description: string;
+}
+
+export function riskLevelFromScore(score: number): 'safe' | 'medium' | 'high' {
+  if (score <= 30) return 'safe';
+  if (score <= 50) return 'medium';
+  return 'high';
+}
 
 export const COURIER_FLAG_NAMES = [
   'Poor Courier Delivery History',

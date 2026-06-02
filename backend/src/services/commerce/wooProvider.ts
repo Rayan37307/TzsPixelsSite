@@ -1,0 +1,66 @@
+import { WooCommerceService } from '../woocommerceService.js';
+import { historyFromOrders } from './helpers.js';
+import type {
+  CommerceProvider,
+  NormalizedProduct,
+  PlaceOrderInput,
+  PlaceOrderResult,
+  CustomerOrderHistory,
+} from './types.js';
+
+function normalize(p: any): NormalizedProduct {
+  return {
+    id: String(p.id),
+    name: p.name,
+    price: String(p.price ?? ''),
+    inStock: p.stock_status === 'instock',
+    description: (p.short_description || p.description || '').replace(/<[^>]*>/g, '').trim(),
+  };
+}
+
+export const wooProvider: CommerceProvider = {
+  name: 'woocommerce',
+
+  async listProducts(limit = 50): Promise<NormalizedProduct[]> {
+    const products = await WooCommerceService.getProducts();
+    return products.slice(0, limit).map(normalize);
+  },
+
+  async searchProducts(query: string): Promise<NormalizedProduct[]> {
+    const products = await WooCommerceService.getProducts();
+    const q = query.toLowerCase();
+    return products
+      .filter(
+        (p: any) =>
+          p.name?.toLowerCase().includes(q) ||
+          p.description?.toLowerCase().includes(q)
+      )
+      .slice(0, 5)
+      .map(normalize);
+  },
+
+  async createOrder(input: PlaceOrderInput): Promise<PlaceOrderResult> {
+    const productId = await WooCommerceService.findProductId(input.productName);
+
+    const order = await WooCommerceService.createOrder({
+      billing: {
+        first_name: input.customerName.split(' ')[0],
+        last_name: input.customerName.split(' ').slice(1).join(' ') || '',
+        email: input.email,
+        phone: input.phone,
+        address_1: input.address,
+        city: input.city,
+        country: 'BD',
+      },
+      line_items: [{ product_id: productId, quantity: input.quantity }],
+      status: 'processing',
+    });
+
+    return { orderId: String(order.id), orderNumber: String(order.number) };
+  },
+
+  async getCustomerOrderHistory(phone: string): Promise<CustomerOrderHistory> {
+    const orders = await WooCommerceService.fetchOrders();
+    return historyFromOrders(orders, phone);
+  },
+};
