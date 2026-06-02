@@ -1,143 +1,143 @@
-# Instagram Expansion — Design
+# Instagram DM Expansion — Design
 
-**Date:** 2026-06-02
+**Date:** 2026-06-02 (revised — scope narrowed)
 **Status:** Approved
-**Scope:** Add Instagram DM auto-reply and Instagram comment → private-DM handoff, alongside existing Facebook messaging/comment automation.
+**Scope:** Stable Facebook Messenger DM automation + new Instagram Direct Message auto-reply. Disable all comment automation.
 
 ## Goal
 
-Extend the existing Facebook (Messenger + Page comment) automation to Instagram, reusing the AI chatbot pipeline. Instagram support covers:
+Extend the existing Facebook Messenger automation to Instagram **Direct Messages**, reusing the AI chatbot pipeline. And disable the existing Facebook comment automation so the service focuses on stable DM auto-reply across both channels.
 
-- **IG Direct Message auto-reply** — mirrors the current Facebook Messenger flow via `ConversationOrchestrator`.
-- **IG comment → private DM** — when someone comments on an Instagram post/reel, the bot sends the AI answer **only as a private DM** (no public reply), using Meta's private-reply API.
+- **Facebook Messenger DM** — existing flow, kept stable.
+- **Instagram DM auto-reply** — new; mirrors the Messenger flow via `ConversationOrchestrator`.
+- **Comment automation (FB + IG)** — disabled. The webhook stops processing comment/feed events. Existing Facebook comment code (`CommentHandler`, `FacebookAdapter.replyToComment`) stays in the tree, unused, for easy re-enable later.
 
-Out of scope: Instagram story mentions/replies, public IG comment replies.
+Out of scope: any comment auto-reply (FB or IG), comment→DM private reply, Instagram stories.
 
 ## Background / Current State
 
-- All messaging runs through the Meta Graph API (`graph.facebook.com/v21.0`), with Facebook hardcoded throughout:
-  - `FacebookAdapter` — all Graph API calls.
+- All messaging runs through the Meta Graph API (`graph.facebook.com/v21.0`), Facebook hardcoded throughout:
+  - `FacebookAdapter` — all Graph API calls (currently `static` methods).
   - `ConversationOrchestrator.handleIncomingMessage` — calls `FacebookAdapter` directly.
-  - `CommentHandler.handleComment` — calls `FacebookAdapter.replyToComment` directly.
-  - Webhook `POST /webhooks/facebook` handles only `object === 'page'` (FB DMs via `entry[].messaging[]`, FB comments via `entry[].changes[]` field `feed`).
-- The `conversations` table already has a `platform` column (default `'facebook'`) with a unique constraint on `[platform_user_id, platform]`, and `getConversationByPlatformUserId` already accepts a `platform` argument. **No DB migration is required.**
+  - `CommentHandler.handleComment` — calls `FacebookAdapter.replyToComment` directly (to be left intact but untriggered).
+  - Webhook `POST /webhooks/facebook` handles `object === 'page'`: FB DMs via `entry[].messaging[]`, FB comments via `entry[].changes[]` field `feed`.
+- `conversations` table already has `platform` (default `'facebook'`) with unique `[platform_user_id, platform]`; `getConversationByPlatformUserId` already accepts a `platform`. **No DB migration required.**
+- `ChatbotService.isConfigured()` calls `FacebookAdapter.isConfigured()` (static) at two sites.
 - Config: `FB_PAGE_ID`, `FB_ACCESS_TOKEN`, `FB_VERIFY_TOKEN`.
 
 ## API Path Decision
 
 Instagram Professional account linked to the existing Facebook Page, **same Meta app**.
 
-- Reuse `FB_ACCESS_TOKEN` (Page token grants Instagram access once IG permissions are added).
-- Reuse the **same webhook URL**; Meta delivers IG events to it with `object: "instagram"` once the IG product is subscribed.
+- Reuse `FB_ACCESS_TOKEN` (Page token grants Instagram access once IG permission added).
+- Reuse the **same webhook URL**; IG events arrive with `object: "instagram"` once the IG product is subscribed.
 - All calls stay on `graph.facebook.com/v21.0`.
 - New env var: `IG_BUSINESS_ACCOUNT_ID` (Instagram-scoped sender id).
-- Meta app config: subscribe `instagram` product, webhook fields `messages` + `comments`; add permissions `instagram_manage_messages` + `instagram_manage_comments`.
+- Meta app config: subscribe `instagram` product, webhook field `messages` (DMs only — do **not** subscribe `comments`); add permission `instagram_manage_messages`.
+
+Key API fact:
+- **IG DM** → `POST /{IG_BUSINESS_ACCOUNT_ID}/messages`, recipient is IGSID (Instagram-scoped user id).
 
 ## Architecture
 
-Introduce a `MessagingAdapter` interface. `FacebookAdapter` and a new `InstagramAdapter` both implement it. A registry resolves the adapter by `conversation.platform`. `ConversationOrchestrator` and `CommentHandler` stop calling `FacebookAdapter` directly and instead resolve via the registry.
+Introduce a `MessagingAdapter` interface covering the **DM methods only**. `FacebookAdapter` and a new `InstagramAdapter` implement it. An `adapterRegistry` resolves the adapter by `conversation.platform`. `ConversationOrchestrator` becomes platform-aware (default `'facebook'`, FB callers unchanged) and resolves via the registry.
 
 ```
 services/messaging/
   MessagingAdapter.ts         // interface + shared types (NEW)
-  FacebookAdapter.ts          // implements MessagingAdapter (REFACTOR)
-  InstagramAdapter.ts         // implements MessagingAdapter (NEW)
+  FacebookAdapter.ts          // implements MessagingAdapter; keeps comment/extra methods (REFACTOR)
+  InstagramAdapter.ts         // implements MessagingAdapter (DM only) (NEW)
   adapterRegistry.ts          // getAdapter(platform): MessagingAdapter (NEW)
+  webhookParser.ts            // pure parser for IG DM webhook entries (NEW)
   ConversationOrchestrator.ts // resolve adapter via registry, platform-aware (REFACTOR)
-  CommentHandler.ts           // platform-aware, IG private-reply path (REFACTOR)
+  CommentHandler.ts           // kept, untriggered; switched to facebookAdapter singleton (MINOR)
 ```
 
-### Interface
+### Interface (DM-only)
 
 ```ts
-interface NormalizedProfile {
+export interface NormalizedProfile {
   id: string;
   first_name: string;
   last_name: string;
   profile_pic?: string;
 }
 
-interface MessagingAdapter {
+export interface MessagingAdapter {
   isConfigured(): boolean;
   sendTextMessage(recipientId: string, message: string): Promise<string | null>;
   getUserProfile(userId: string): Promise<NormalizedProfile>;
   setTypingIndicator(recipientId: string, state: 'on' | 'off'): Promise<void>;
-  replyToComment(commentId: string, message: string): Promise<void>;
-  sendPrivateReply(commentId: string, message: string): Promise<string | null>;
 }
 ```
 
-- FacebookAdapter behavior is unchanged for existing methods. It implements `sendPrivateReply` by throwing `Error('Facebook private reply not supported')` — the FB flow uses `replyToComment` only and never calls it. (Keeps the interface honest without adding an unused FB endpoint.)
-- Existing FB-only convenience methods (`sendMessage`, `sendQuickReply`, `sendAttachment`) remain on `FacebookAdapter` but are not part of the shared interface (YAGNI for IG now).
+- Comment-related methods (`replyToComment`) are **not** in the interface. `FacebookAdapter` keeps `replyToComment` (plus existing `sendQuickReply`, `sendAttachment`) as FB-specific methods outside the interface, since comment code is retained but unused. `InstagramAdapter` implements only the interface.
+- `FacebookAdapter` is converted from static methods to an instance class with an exported singleton `facebookAdapter`, so it can satisfy `implements MessagingAdapter`. All call sites move to the singleton.
 
 ### adapterRegistry
 
-`getAdapter(platform: string): MessagingAdapter` returns `FacebookAdapter` for `'facebook'`, `InstagramAdapter` for `'instagram'`. Throws on unknown platform.
+`getAdapter(platform: string): MessagingAdapter` → `facebookAdapter` for `'facebook'`, `instagramAdapter` for `'instagram'`. Throws on unknown platform.
 
 ## InstagramAdapter specifics
 
-- Base URL: `https://graph.facebook.com/v21.0`. Token: `FB_ACCESS_TOKEN`. Sender id: `IG_BUSINESS_ACCOUNT_ID`.
+- Base: `https://graph.facebook.com/v21.0`. Token: `FB_ACCESS_TOKEN`. Sender id: `IG_BUSINESS_ACCOUNT_ID`.
 - `isConfigured()` → both `FB_ACCESS_TOKEN` and `IG_BUSINESS_ACCOUNT_ID` present.
 - `sendTextMessage(igsid, msg)` → `POST /{IG_BUSINESS_ACCOUNT_ID}/messages`, body `{ messaging_type: 'RESPONSE', recipient: { id: igsid }, message: { text: msg } }`. Returns `message_id`.
-- `getUserProfile(igsid)` → `GET /{igsid}?fields=name,username,profile_pic`. IG returns `name`/`username` (not first/last); adapter normalizes into `NormalizedProfile` (e.g. `first_name = name || username`, `last_name = ''`). On error, fallback `{ id, first_name: 'Instagram', last_name: 'User' }`.
-- `setTypingIndicator(igsid, state)` → `POST /{IG_BUSINESS_ACCOUNT_ID}/messages` with `{ recipient: { id: igsid }, sender_action: 'typing_on'|'typing_off' }`; swallow errors (best-effort).
-- `replyToComment(commentId, msg)` → `POST /{commentId}/replies` with `{ message }`. (Implemented for completeness; not used by the chosen IG flow.)
-- `sendPrivateReply(commentId, msg)` → `POST /{IG_BUSINESS_ACCOUNT_ID}/messages` with `{ recipient: { comment_id: commentId }, message: { text: msg } }`. Returns `message_id`.
+- `getUserProfile(igsid)` → `GET /{igsid}?fields=name,username,profile_pic`. IG returns `name`/`username` (not first/last); normalize into `NormalizedProfile` (`first_name = name || username`, `last_name = ''`). On error, fallback `{ id, first_name: 'Instagram', last_name: 'User' }`.
+- `setTypingIndicator(igsid, state)` → `POST /{IG_BUSINESS_ACCOUNT_ID}/messages` with `{ recipient: { id: igsid }, sender_action }`; swallow errors.
 
 ## Webhook routing
 
-In `POST /webhooks/facebook`, add an `object === 'instagram'` branch (same URL; FB `object === 'page'` branch unchanged).
+In `POST /webhooks/facebook`:
 
-- **IG DM**: iterate `entry[].messaging[]`. For each with `sender.id` (IGSID) + `message.text` and **not** `message.is_echo` and `sender.id !== IG_BUSINESS_ACCOUNT_ID` → `ConversationOrchestrator.handleIncomingMessage(senderId, text, mid, 'instagram')`.
-- **IG comment**: iterate `entry[].changes[]` where `field === 'comments'`. Guard `value.from?.id !== IG_BUSINESS_ACCOUNT_ID`. Call `CommentHandler.handleComment(value.id, value.from?.username ?? 'User', value.text, 'instagram')`.
-  - Note: IG comment webhook payload uses `value.id` (comment id), `value.text`, `value.from.{id,username}` — distinct from FB feed payload which uses `comment_id`, `message`, `from.{id,name}`. The parser handles each shape in its own branch.
+- **`object === 'page'` (FB)**: keep the DM branch (`entry[].messaging[]`). **Remove** the comment/feed branch (`entry[].changes[]` field `feed` → `CommentHandler`). This disables FB comment automation at the trigger.
+- **`object === 'instagram'` (new)**: handle DMs only. Parse `entry[].messaging[]` → `sender.id` (IGSID) + `message.text`, skipping `message.is_echo` and self-sent events (`sender.id === IG_BUSINESS_ACCOUNT_ID`) → `ConversationOrchestrator.handleIncomingMessage(senderId, text, mid, 'instagram')`. Ignore any IG `changes`/comment events.
 
-The handler already sends `200 OK` before processing; keep that.
+The handler keeps sending `200 OK` before processing.
 
-## Orchestrator / CommentHandler changes
+## Disabling comment automation
+
+- Remove the `feed`-comment branch from the webhook POST handler (the only trigger).
+- Leave `CommentHandler.ts` and `FacebookAdapter.replyToComment` in place, unused. `CommentHandler` is updated only to use the `facebookAdapter` singleton instead of static calls (so the project still compiles after the adapter refactor).
+- Do not subscribe the IG `comments` webhook field in the Meta app.
+
+## Orchestrator changes
 
 - `ConversationOrchestrator.handleIncomingMessage(platformUserId, messageText, platformMessageId?, platform = 'facebook')`:
   - Resolve adapter via `getAdapter(platform)`.
   - Pass `platform` to `db.getConversationByPlatformUserId` and `db.createConversation`.
   - Replace direct `FacebookAdapter.*` calls with the resolved adapter.
-  - Existing human-takeover trigger logic unchanged.
+  - Human-takeover trigger logic unchanged.
 - `ConversationOrchestrator.sendAdminMessage` resolves the adapter from `conversation.platform`.
-- `CommentHandler.handleComment(commentId, commenterName, commentText, platform = 'facebook')`:
-  - `facebook` → keep current behavior: `adapter.replyToComment(commentId, aiReply)` (public reply).
-  - `instagram` → `adapter.sendPrivateReply(commentId, aiReply)` (private DM only, no public reply).
-  - Dedup: keep an in-memory `Set<string>` of processed `commentId`s; skip if already processed (Meta redelivers webhooks; private reply allowed once per comment). Process-local — acceptable for single instance; documented limitation for horizontal scaling.
+- `ChatbotService` static `FacebookAdapter.isConfigured()` calls migrate to the `facebookAdapter` singleton.
 
-## Data flow (IG comment → DM → conversation)
+## Data model — no migration
 
-1. User comments on IG post → webhook `comments` change.
-2. `CommentHandler` runs AI on comment text → `sendPrivateReply(commentId, aiReply)` → DM delivered.
-3. If user replies in DM → arrives as IG `messaging` event with their IGSID → `ConversationOrchestrator` creates/looks up conversation keyed by `(igsid, 'instagram')` → normal AI flow.
+`conversations.platform` + unique `[platform_user_id, platform]` already exist. IG conversations stored with `platform='instagram'`.
 
 ## Config changes
 
-- Add `IG_BUSINESS_ACCOUNT_ID` to `backend/.env` and any env documentation.
-- No new tokens; `FB_ACCESS_TOKEN` and `FB_VERIFY_TOKEN` reused.
+- Add `IG_BUSINESS_ACCOUNT_ID` to `backend/.env`. Reuse `FB_ACCESS_TOKEN`, `FB_VERIFY_TOKEN`.
 
 ## Error handling / edge cases
 
-- **24-hour messaging window**: IG DM sends outside the standard messaging window fail with a specific Meta error — log and continue, do not crash. Private reply is exempt (allowed once per comment).
-- **Profile fetch failure**: fallback to "Instagram User".
+- **24-hour messaging window**: IG DM sends outside the window fail with a Meta error — log, don't crash.
+- **Profile fetch failure**: fallback "Instagram User".
 - **Adapter not configured**: throw; caught by webhook try/catch (200 already acked).
-- **Echo / self events**: skip `is_echo` and events where sender/from id equals `IG_BUSINESS_ACCOUNT_ID`.
-- **Comment dedup**: in-memory Set; note as future work to persist if scaled to multiple instances.
+- **Echo / self events**: skip `is_echo` and events where sender id equals `IG_BUSINESS_ACCOUNT_ID`.
 
 ## Testing
 
-- **Unit — InstagramAdapter** (mock axios): correct endpoint + payload for `sendTextMessage`, `sendPrivateReply`, `getUserProfile` normalization, `isConfigured` logic, `setTypingIndicator` error-swallowing.
+- **Unit — InstagramAdapter** (mock axios): endpoint + payload for `sendTextMessage`, `getUserProfile` normalization + fallback, `isConfigured`, `setTypingIndicator` error-swallowing.
+- **Unit — FacebookAdapter** (mock axios): `isConfigured`, `sendTextMessage` payload, singleton export.
 - **Unit — adapterRegistry**: resolves facebook/instagram, throws on unknown.
-- **Unit — CommentHandler**: IG path calls `sendPrivateReply` (not `replyToComment`); FB path unchanged; dedup skips repeat `commentId`.
-- **Unit — webhook parser**: `object:'instagram'` DM fixture routes to orchestrator with `'instagram'`; IG comment fixture routes to CommentHandler with `'instagram'`; `is_echo` and self-id events skipped.
-- **Regression**: existing Facebook DM + comment flows unchanged after refactor.
+- **Unit — webhookParser**: `object:'instagram'` DM fixture → DM list; `is_echo` and self-id events skipped; comment/`changes` events ignored.
+- **Regression**: existing Facebook DM flow unchanged after refactor; comments no longer trigger replies.
 
 ## Non-goals
 
-- Instagram story mentions/replies.
-- Public Instagram comment replies.
+- Any comment auto-reply (FB or IG), comment→DM private reply.
+- Instagram stories.
 - Standalone Instagram Login (graph.instagram.com) path.
 - Quick replies / attachments for Instagram.
-- Persisted (cross-instance) comment dedup.
+- Deleting comment code (kept, just untriggered).

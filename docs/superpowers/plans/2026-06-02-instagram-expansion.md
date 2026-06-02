@@ -1,105 +1,44 @@
-# Instagram Expansion Implementation Plan
+# Instagram DM Expansion Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add Instagram DM auto-reply and Instagram comment→private-DM handoff alongside the existing Facebook messaging/comment automation.
+**Goal:** Add Instagram Direct Message auto-reply alongside the existing Facebook Messenger DM automation, and disable all comment automation (keep the code, remove the trigger).
 
-**Architecture:** Introduce a `MessagingAdapter` interface implemented by `FacebookAdapter` and a new `InstagramAdapter`, resolved per-conversation by an `adapterRegistry`. `ConversationOrchestrator` and `CommentHandler` become platform-aware (default `'facebook'`, FB callers unchanged). The shared `POST /webhooks/facebook` route gains an `object === 'instagram'` branch. No DB migration — `conversations.platform` already exists.
+**Architecture:** A `MessagingAdapter` interface (DM methods only) implemented by `FacebookAdapter` and a new `InstagramAdapter`, resolved per-conversation by an `adapterRegistry`. `ConversationOrchestrator` becomes platform-aware (default `'facebook'`, FB callers unchanged). The shared `POST /webhooks/facebook` route gains an `object === 'instagram'` DM branch and drops the FB comment/feed branch. No DB migration — `conversations.platform` already exists.
 
-**Tech Stack:** TypeScript (NodeNext ESM), Express, Prisma, axios, Meta Graph API v21.0. Tests via **vitest** (new dev dependency).
+**Tech Stack:** TypeScript (NodeNext ESM), Express, Prisma, axios, Meta Graph API v21.0. Tests via **vitest**.
+
+**Scope note (revised):** No comment automation. `CommentHandler` and `FacebookAdapter.replyToComment` stay in the tree, unused. `MessagingAdapter` is DM-only; comment methods are NOT part of the interface.
 
 ---
 
 ## File Structure
 
-- `backend/vitest.config.ts` — NEW, vitest config.
-- `backend/package.json` — MODIFY, add vitest + `test` script.
-- `backend/src/services/messaging/MessagingAdapter.ts` — NEW, interface + shared types.
-- `backend/src/services/messaging/FacebookAdapter.ts` — MODIFY, `implements MessagingAdapter` + add `sendPrivateReply`.
-- `backend/src/services/messaging/InstagramAdapter.ts` — NEW.
-- `backend/src/services/messaging/adapterRegistry.ts` — NEW, `getAdapter(platform)`.
-- `backend/src/services/messaging/webhookParser.ts` — NEW, pure parser for IG webhook entries (testable).
+- `backend/vitest.config.ts` — DONE (Task 1).
+- `backend/package.json` — DONE (Task 1).
+- `backend/src/services/messaging/MessagingAdapter.ts` — NEW, interface + shared types (DM-only).
+- `backend/src/services/messaging/FacebookAdapter.ts` — MODIFY, instance class + singleton, `implements MessagingAdapter`, keep `replyToComment`/`sendQuickReply`/`sendAttachment` as extra methods.
+- `backend/src/services/messaging/InstagramAdapter.ts` — NEW (DM only).
+- `backend/src/services/messaging/adapterRegistry.ts` — NEW.
+- `backend/src/services/messaging/webhookParser.ts` — NEW, pure IG DM parser.
+- `backend/src/services/messaging/CommentHandler.ts` — MINOR, switch to `facebookAdapter` singleton (kept, untriggered).
 - `backend/src/services/messaging/ConversationOrchestrator.ts` — MODIFY, platform-aware via registry.
-- `backend/src/services/messaging/CommentHandler.ts` — MODIFY, platform-aware + IG private reply + dedup.
-- `backend/src/routes/messagingRoutes.ts` — MODIFY, add `object:'instagram'` branch.
+- `backend/src/services/chatbot/ChatbotService.ts` — MODIFY, migrate static `FacebookAdapter.isConfigured()` to singleton.
+- `backend/src/routes/messagingRoutes.ts` — MODIFY, add IG DM branch, remove FB feed/comment branch.
 - `backend/.env` — MODIFY, add `IG_BUSINESS_ACCOUNT_ID`.
 
-Test files (co-located under `backend/src/services/messaging/__tests__/`):
-- `InstagramAdapter.test.ts`, `adapterRegistry.test.ts`, `CommentHandler.test.ts`, `webhookParser.test.ts`, `FacebookAdapter.test.ts`.
+Test files under `backend/src/services/messaging/__tests__/`:
+- `InstagramAdapter.test.ts`, `adapterRegistry.test.ts`, `webhookParser.test.ts`, `FacebookAdapter.test.ts`.
 
 ---
 
-## Task 1: Set up vitest
+## Task 1: Set up vitest — ✅ DONE
 
-**Files:**
-- Modify: `backend/package.json`
-- Create: `backend/vitest.config.ts`
-- Create: `backend/src/services/messaging/__tests__/smoke.test.ts`
-
-- [ ] **Step 1: Install vitest**
-
-Run:
-```bash
-cd backend && npm install -D vitest
-```
-Expected: vitest added to devDependencies, exit 0.
-
-- [ ] **Step 2: Add test script to package.json**
-
-In `backend/package.json`, change the `scripts` block to:
-```json
-  "scripts": {
-    "start": "node dist/index.js",
-    "dev": "tsx watch src/index.ts",
-    "build": "tsc",
-    "test": "vitest run",
-    "test:watch": "vitest"
-  },
-```
-
-- [ ] **Step 3: Create vitest config**
-
-Create `backend/vitest.config.ts`:
-```ts
-import { defineConfig } from 'vitest/config';
-
-export default defineConfig({
-  test: {
-    environment: 'node',
-    include: ['src/**/*.test.ts'],
-    clearMocks: true,
-  },
-});
-```
-
-- [ ] **Step 4: Write a smoke test**
-
-Create `backend/src/services/messaging/__tests__/smoke.test.ts`:
-```ts
-import { describe, it, expect } from 'vitest';
-
-describe('vitest setup', () => {
-  it('runs', () => {
-    expect(1 + 1).toBe(2);
-  });
-});
-```
-
-- [ ] **Step 5: Run the smoke test**
-
-Run: `cd backend && npm test`
-Expected: PASS, 1 test passed.
-
-- [ ] **Step 6: Commit**
-
-```bash
-git add backend/package.json backend/package-lock.json backend/vitest.config.ts backend/src/services/messaging/__tests__/smoke.test.ts
-git commit -m "chore: add vitest test runner"
-```
+(Committed: `chore: add vitest test runner`.)
 
 ---
 
-## Task 2: MessagingAdapter interface
+## Task 2: MessagingAdapter interface (DM-only)
 
 **Files:**
 - Create: `backend/src/services/messaging/MessagingAdapter.ts`
@@ -122,8 +61,6 @@ export interface MessagingAdapter {
   sendTextMessage(recipientId: string, message: string): Promise<string | null>;
   getUserProfile(userId: string): Promise<NormalizedProfile>;
   setTypingIndicator(recipientId: string, state: 'on' | 'off'): Promise<void>;
-  replyToComment(commentId: string, message: string): Promise<void>;
-  sendPrivateReply(commentId: string, message: string): Promise<string | null>;
 }
 
 export type Platform = 'facebook' | 'instagram';
@@ -138,18 +75,22 @@ Expected: no errors.
 
 ```bash
 git add backend/src/services/messaging/MessagingAdapter.ts
-git commit -m "feat: add MessagingAdapter interface"
+git commit -m "feat: add MessagingAdapter interface (DM-only)"
 ```
 
 ---
 
-## Task 3: FacebookAdapter implements interface
+## Task 3: FacebookAdapter implements interface (+ CommentHandler/ChatbotService singleton migration)
 
 **Files:**
 - Modify: `backend/src/services/messaging/FacebookAdapter.ts`
+- Modify: `backend/src/services/messaging/CommentHandler.ts`
+- Modify: `backend/src/services/chatbot/ChatbotService.ts`
 - Test: `backend/src/services/messaging/__tests__/FacebookAdapter.test.ts`
 
-`FacebookAdapter` is currently a class with `static` methods. The interface is instance-shaped. To satisfy `implements MessagingAdapter` without rewriting every call site at once, convert the static methods to instance methods and export a singleton. Call sites are updated in Tasks 6–7.
+`FacebookAdapter` is currently a class with `static` methods. Convert to instance methods + exported singleton so it can `implements MessagingAdapter`. Then migrate every static call site (`CommentHandler`, `ChatbotService`, and `ConversationOrchestrator` in Task 6).
+
+`replyToComment` is kept (comment code retained but untriggered) — it is NOT part of the `MessagingAdapter` interface, just an extra method on the class.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -186,12 +127,6 @@ describe('FacebookAdapter', () => {
     await facebookAdapter.replyToComment('C1', 'thanks');
     const [url] = (axios.post as any).mock.calls[0];
     expect(url).toContain('/C1/comments');
-  });
-
-  it('sendPrivateReply throws (unsupported for FB)', async () => {
-    await expect(facebookAdapter.sendPrivateReply('C1', 'x')).rejects.toThrow(
-      'Facebook private reply not supported'
-    );
   });
 });
 ```
@@ -355,6 +290,7 @@ export class FacebookAdapter implements MessagingAdapter {
     }
   }
 
+  // Comment automation is currently disabled (no webhook trigger). Kept for re-enable.
   async replyToComment(commentId: string, message: string): Promise<void> {
     if (!this.isConfigured()) {
       throw new Error('Facebook adapter not configured');
@@ -370,32 +306,80 @@ export class FacebookAdapter implements MessagingAdapter {
       throw error;
     }
   }
-
-  async sendPrivateReply(_commentId: string, _message: string): Promise<string | null> {
-    throw new Error('Facebook private reply not supported');
-  }
 }
 
 export const facebookAdapter = new FacebookAdapter();
 ```
 
-Note: the static `sendMessage` and `verifyWebhook` methods are dropped. `verifyWebhook` was unused (the route checks the token inline). If a grep shows `FacebookAdapter.sendMessage(` or `FacebookAdapter.verifyWebhook(` used anywhere, add the missing method instead of dropping it. Run `grep -rn "FacebookAdapter.sendMessage\|FacebookAdapter.verifyWebhook\|FacebookAdapter.getUserProfile\|FacebookAdapter.sendTextMessage\|FacebookAdapter.setTypingIndicator\|FacebookAdapter.replyToComment\|FacebookAdapter.sendQuickReply\|FacebookAdapter.sendAttachment" backend/src` first; all static call sites are updated in Tasks 6–7, but confirm none are missed.
+Note: the old static `sendMessage` and `verifyWebhook` methods are dropped (unused — the route verifies the token inline). Before finishing, run `grep -rn "FacebookAdapter\.\(sendMessage\|verifyWebhook\|sendTextMessage\|getUserProfile\|setTypingIndicator\|replyToComment\|sendQuickReply\|sendAttachment\|isConfigured\)" backend/src` to find every static call site; Steps 4–5 cover `CommentHandler` and `ChatbotService`, and Task 6 covers `ConversationOrchestrator`. If any other call site exists, report it as DONE_WITH_CONCERNS.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **Step 4: Migrate CommentHandler to the singleton (keep code, untriggered)**
 
-Run: `cd backend && npx vitest run src/services/messaging/__tests__/FacebookAdapter.test.ts`
-Expected: PASS, 4 tests.
+In `backend/src/services/messaging/CommentHandler.ts`:
 
-- [ ] **Step 5: Commit**
+Change the import:
+```ts
+import { FacebookAdapter } from './FacebookAdapter.js';
+```
+to:
+```ts
+import { facebookAdapter } from './FacebookAdapter.js';
+```
+
+Change the call (currently `await FacebookAdapter.replyToComment(commentId, aiReply);`):
+```ts
+      await facebookAdapter.replyToComment(commentId, aiReply);
+```
+Leave everything else in `CommentHandler.ts` unchanged. (It is no longer triggered after Task 7, but must still compile.)
+
+- [ ] **Step 5: Migrate ChatbotService static calls to the singleton**
+
+In `backend/src/services/chatbot/ChatbotService.ts`:
+
+Change the import:
+```ts
+import { FacebookAdapter } from '../messaging/FacebookAdapter.js';
+```
+to:
+```ts
+import { facebookAdapter } from '../messaging/FacebookAdapter.js';
+```
+
+Change line ~24:
+```ts
+    return !!(this.GEMINI_API_KEY && FacebookAdapter.isConfigured());
+```
+to:
+```ts
+    return !!(this.GEMINI_API_KEY && facebookAdapter.isConfigured());
+```
+
+Change line ~133:
+```ts
+    const fbConfigured = FacebookAdapter.isConfigured();
+```
+to:
+```ts
+    const fbConfigured = facebookAdapter.isConfigured();
+```
+
+- [ ] **Step 6: Run test + typecheck**
+
+Run: `cd backend && npx vitest run src/services/messaging/__tests__/FacebookAdapter.test.ts && npx tsc --noEmit`
+Expected: 3 tests PASS; typecheck clean. (Typecheck confirms no remaining static call sites except `ConversationOrchestrator`, which is still `FacebookAdapter.*` static and WILL error here — that's expected and fixed in Task 6. If the only tsc errors are in `ConversationOrchestrator.ts`, proceed; otherwise fix the other call sites.)
+
+Note: because `ConversationOrchestrator` still uses the old static API until Task 6, `tsc --noEmit` will report errors there. That is acceptable for this task. Confirm the errors are confined to `ConversationOrchestrator.ts`.
+
+- [ ] **Step 7: Commit**
 
 ```bash
-git add backend/src/services/messaging/FacebookAdapter.ts backend/src/services/messaging/__tests__/FacebookAdapter.test.ts
+git add backend/src/services/messaging/FacebookAdapter.ts backend/src/services/messaging/CommentHandler.ts backend/src/services/chatbot/ChatbotService.ts backend/src/services/messaging/__tests__/FacebookAdapter.test.ts
 git commit -m "refactor: FacebookAdapter implements MessagingAdapter as singleton"
 ```
 
 ---
 
-## Task 4: InstagramAdapter
+## Task 4: InstagramAdapter (DM only)
 
 **Files:**
 - Create: `backend/src/services/messaging/InstagramAdapter.ts`
@@ -436,16 +420,6 @@ describe('InstagramAdapter', () => {
     expect(body.message.text).toBe('hi');
   });
 
-  it('sendPrivateReply posts with comment_id recipient', async () => {
-    (axios.post as any).mockResolvedValue({ data: { message_id: 'm2' } });
-    const id = await instagramAdapter.sendPrivateReply('CMT1', 'check dm');
-    expect(id).toBe('m2');
-    const [url, body] = (axios.post as any).mock.calls[0];
-    expect(url).toContain('/IG123/messages');
-    expect(body.recipient.comment_id).toBe('CMT1');
-    expect(body.message.text).toBe('check dm');
-  });
-
   it('getUserProfile normalizes name/username into first_name', async () => {
     (axios.get as any).mockResolvedValue({ data: { name: 'Jane Doe', username: 'jane' } });
     const profile = await instagramAdapter.getUserProfile('IGSID1');
@@ -459,13 +433,6 @@ describe('InstagramAdapter', () => {
     const profile = await instagramAdapter.getUserProfile('IGSID1');
     expect(profile.first_name).toBe('Instagram');
     expect(profile.last_name).toBe('User');
-  });
-
-  it('replyToComment posts to comment replies endpoint', async () => {
-    (axios.post as any).mockResolvedValue({ data: {} });
-    await instagramAdapter.replyToComment('CMT1', 'hello');
-    const [url] = (axios.post as any).mock.calls[0];
-    expect(url).toContain('/CMT1/replies');
   });
 
   it('setTypingIndicator swallows errors', async () => {
@@ -525,26 +492,6 @@ export class InstagramAdapter implements MessagingAdapter {
     }
   }
 
-  async sendPrivateReply(commentId: string, message: string): Promise<string | null> {
-    if (!this.isConfigured()) {
-      throw new Error('Instagram adapter not configured');
-    }
-    try {
-      const response = await axios.post(
-        `${this.BASE_URL}/messages`,
-        {
-          recipient: { comment_id: commentId },
-          message: { text: message },
-        },
-        { params: { access_token: this.ACCESS_TOKEN } }
-      );
-      return response.data.message_id || null;
-    } catch (error: any) {
-      console.error('[Instagram] Private reply error:', error.response?.data || error.message);
-      throw error;
-    }
-  }
-
   async getUserProfile(userId: string): Promise<NormalizedProfile> {
     if (!this.isConfigured()) {
       throw new Error('Instagram adapter not configured');
@@ -584,22 +531,6 @@ export class InstagramAdapter implements MessagingAdapter {
       console.error('[Instagram] Typing indicator error:', error.message);
     }
   }
-
-  async replyToComment(commentId: string, message: string): Promise<void> {
-    if (!this.isConfigured()) {
-      throw new Error('Instagram adapter not configured');
-    }
-    try {
-      await axios.post(
-        `https://graph.facebook.com/v21.0/${commentId}/replies`,
-        { message },
-        { params: { access_token: this.ACCESS_TOKEN } }
-      );
-    } catch (error: any) {
-      console.error('[Instagram] Reply to comment error:', error.response?.data || error.message);
-      throw error;
-    }
-  }
 }
 
 export const instagramAdapter = new InstagramAdapter();
@@ -608,13 +539,13 @@ export const instagramAdapter = new InstagramAdapter();
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `cd backend && npx vitest run src/services/messaging/__tests__/InstagramAdapter.test.ts`
-Expected: PASS, 8 tests.
+Expected: PASS, 6 tests.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add backend/src/services/messaging/InstagramAdapter.ts backend/src/services/messaging/__tests__/InstagramAdapter.test.ts
-git commit -m "feat: add InstagramAdapter"
+git commit -m "feat: add InstagramAdapter (DM)"
 ```
 
 ---
@@ -694,13 +625,12 @@ git commit -m "feat: add messaging adapter registry"
 
 **Files:**
 - Modify: `backend/src/services/messaging/ConversationOrchestrator.ts`
-- Modify: `backend/src/services/chatbot/ChatbotService.ts` (migrate static `FacebookAdapter.isConfigured()` calls)
 
-This task has no new unit test (the orchestrator is integration-heavy and exercised via the webhook in Task 8). The check is a typecheck + the existing FB flow staying intact. Replace direct `FacebookAdapter.*` static calls with `getAdapter(platform)`.
+No new unit test (integration-heavy; exercised via the webhook). Check = typecheck + full suite green. This task also resolves the `tsc` errors left open in Task 3.
 
 - [ ] **Step 1: Update imports**
 
-In `backend/src/services/messaging/ConversationOrchestrator.ts`, replace the import line:
+In `backend/src/services/messaging/ConversationOrchestrator.ts`, replace:
 ```ts
 import { FacebookAdapter } from '../messaging/FacebookAdapter.js';
 ```
@@ -709,9 +639,9 @@ with:
 import { getAdapter } from './adapterRegistry.js';
 ```
 
-- [ ] **Step 2: Update `handleIncomingMessage` signature and body**
+- [ ] **Step 2: Replace `handleIncomingMessage`**
 
-Replace the `handleIncomingMessage` method (everything from `static async handleIncomingMessage(` through its closing `}` before `takeOverConversation`) with:
+Replace the entire `handleIncomingMessage` method (from `static async handleIncomingMessage(` through its closing `}` before `takeOverConversation`) with:
 ```ts
   static async handleIncomingMessage(
     platformUserId: string,
@@ -802,7 +732,7 @@ Replace the `handleIncomingMessage` method (everything from `static async handle
   }
 ```
 
-- [ ] **Step 3: Update `sendAdminMessage` to resolve adapter from conversation platform**
+- [ ] **Step 3: Replace `sendAdminMessage`**
 
 Replace the `sendAdminMessage` method with:
 ```ts
@@ -825,198 +755,78 @@ Replace the `sendAdminMessage` method with:
   }
 ```
 
-- [ ] **Step 4: Migrate ChatbotService static FacebookAdapter calls**
+- [ ] **Step 4: Typecheck + full suite**
 
-`Task 3` removed the static `FacebookAdapter.isConfigured()`. `ChatbotService` calls it at two sites. In `backend/src/services/chatbot/ChatbotService.ts`:
+Run: `cd backend && npx tsc --noEmit && npm test`
+Expected: typecheck clean (the Task 3 errors are now resolved); all tests pass.
 
-Change the import:
-```ts
-import { FacebookAdapter } from '../messaging/FacebookAdapter.js';
-```
-to:
-```ts
-import { facebookAdapter } from '../messaging/FacebookAdapter.js';
-```
-
-Change line ~24:
-```ts
-    return !!(this.GEMINI_API_KEY && FacebookAdapter.isConfigured());
-```
-to:
-```ts
-    return !!(this.GEMINI_API_KEY && facebookAdapter.isConfigured());
-```
-
-Change line ~133:
-```ts
-    const fbConfigured = FacebookAdapter.isConfigured();
-```
-to:
-```ts
-    const fbConfigured = facebookAdapter.isConfigured();
-```
-
-- [ ] **Step 5: Typecheck**
-
-Run: `cd backend && npx tsc --noEmit`
-Expected: no errors.
-
-- [ ] **Step 6: Run full test suite (FB adapter tests still pass)**
-
-Run: `cd backend && npm test`
-Expected: PASS, all prior tests green.
-
-- [ ] **Step 7: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add backend/src/services/messaging/ConversationOrchestrator.ts backend/src/services/chatbot/ChatbotService.ts
+git add backend/src/services/messaging/ConversationOrchestrator.ts
 git commit -m "refactor: make ConversationOrchestrator platform-aware via adapter registry"
 ```
 
 ---
 
-## Task 7: Make CommentHandler platform-aware with IG private reply + dedup
+## Task 7: Disable Facebook comment automation (remove webhook trigger)
 
 **Files:**
-- Modify: `backend/src/services/messaging/CommentHandler.ts`
-- Test: `backend/src/services/messaging/__tests__/CommentHandler.test.ts`
+- Modify: `backend/src/routes/messagingRoutes.ts`
 
-- [ ] **Step 1: Write the failing test**
+Remove the `feed`/comment branch from the `object === 'page'` handler. This is the only trigger for `CommentHandler`; the class stays in the tree, unused.
 
-Create `backend/src/services/messaging/__tests__/CommentHandler.test.ts`:
+- [ ] **Step 1: Remove the comment branch**
+
+In `backend/src/routes/messagingRoutes.ts`, inside the `if (body.object === 'page')` block, delete the entire feed/comment loop:
 ```ts
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-
-vi.mock('../adapterRegistry.js', () => {
-  const fb = { replyToComment: vi.fn(), sendPrivateReply: vi.fn() };
-  const ig = { replyToComment: vi.fn(), sendPrivateReply: vi.fn() };
-  return {
-    getAdapter: (platform: string) => (platform === 'instagram' ? ig : fb),
-    __fb: fb,
-    __ig: ig,
-  };
-});
-
-vi.mock('../../chatbot/ChatbotService.js', () => ({
-  ChatbotService: { processMessage: vi.fn().mockResolvedValue('AI ANSWER') },
-}));
-
-import { CommentHandler } from '../CommentHandler.js';
-import * as registry from '../adapterRegistry.js';
-
-const fb = (registry as any).__fb;
-const ig = (registry as any).__ig;
-
-describe('CommentHandler', () => {
-  beforeEach(() => {
-    fb.replyToComment.mockClear();
-    fb.sendPrivateReply.mockClear();
-    ig.replyToComment.mockClear();
-    ig.sendPrivateReply.mockClear();
-    CommentHandler._resetProcessed();
-  });
-
-  it('facebook comment uses public replyToComment', async () => {
-    await CommentHandler.handleComment('FBC1', 'Bob', 'price?', 'facebook');
-    expect(fb.replyToComment).toHaveBeenCalledWith('FBC1', 'AI ANSWER');
-    expect(fb.sendPrivateReply).not.toHaveBeenCalled();
-  });
-
-  it('instagram comment uses private reply only', async () => {
-    await CommentHandler.handleComment('IGC1', 'Ann', 'price?', 'instagram');
-    expect(ig.sendPrivateReply).toHaveBeenCalledWith('IGC1', 'AI ANSWER');
-    expect(ig.replyToComment).not.toHaveBeenCalled();
-  });
-
-  it('dedups repeated comment ids', async () => {
-    await CommentHandler.handleComment('IGC2', 'Ann', 'price?', 'instagram');
-    await CommentHandler.handleComment('IGC2', 'Ann', 'price?', 'instagram');
-    expect(ig.sendPrivateReply).toHaveBeenCalledTimes(1);
-  });
-});
+        // Handle feed events (post comments)
+        for (const change of entry.changes || []) {
+          if (change.field === 'feed') {
+            const val = change.value;
+            const pageId = process.env.FB_PAGE_ID;
+            if (
+              val.item === 'comment' &&
+              val.verb === 'add' &&
+              val.message &&
+              pageId &&
+              val.from?.id !== pageId
+            ) {
+              console.log(`[Webhook] Comment from ${val.from?.name}: ${val.message?.substring(0, 80)}`);
+              await CommentHandler.handleComment(
+                val.comment_id,
+                val.from?.name ?? 'User',
+                val.message
+              );
+            }
+          }
+        }
 ```
+Leave the DM (`entry.messaging`) loop intact.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **Step 2: Remove the now-unused CommentHandler import**
 
-Run: `cd backend && npx vitest run src/services/messaging/__tests__/CommentHandler.test.ts`
-Expected: FAIL — `_resetProcessed` / platform arg not implemented.
-
-- [ ] **Step 3: Rewrite CommentHandler**
-
-Replace the full contents of `backend/src/services/messaging/CommentHandler.ts` with:
+In `backend/src/routes/messagingRoutes.ts`, delete the import line:
 ```ts
-import { getAdapter } from './adapterRegistry.js';
-import { ChatbotService } from '../chatbot/ChatbotService.js';
-
-const ZERO_UUID = '00000000-0000-0000-0000-000000000000';
-
-export class CommentHandler {
-  private static processed = new Set<string>();
-
-  /** Test helper: clear the dedup cache. */
-  static _resetProcessed(): void {
-    this.processed.clear();
-  }
-
-  static async handleComment(
-    commentId: string,
-    commenterName: string,
-    commentText: string,
-    platform: string = 'facebook'
-  ): Promise<void> {
-    if (this.processed.has(commentId)) {
-      console.log(`[CommentHandler] Skipping already-processed comment ${commentId}`);
-      return;
-    }
-    this.processed.add(commentId);
-
-    console.log(
-      `[CommentHandler] (${platform}) Replying to comment ${commentId} from ${commenterName}: ${commentText.substring(0, 80)}`
-    );
-
-    try {
-      const adapter = getAdapter(platform);
-
-      const aiReply = await ChatbotService.processMessage(
-        {
-          conversationId: ZERO_UUID,
-          platformUserId: commentId,
-          customerName: commenterName,
-        },
-        commentText
-      );
-
-      if (platform === 'instagram') {
-        // Instagram: private DM only, no public reply.
-        await adapter.sendPrivateReply(commentId, aiReply);
-      } else {
-        // Facebook: public reply under the comment.
-        await adapter.replyToComment(commentId, aiReply);
-      }
-
-      console.log(`[CommentHandler] Replied to ${commentId}`);
-    } catch (error: any) {
-      console.error(`[CommentHandler] Failed to reply to comment ${commentId}:`, error.message);
-    }
-  }
-}
+import { CommentHandler } from '../services/messaging/CommentHandler.js';
 ```
+(`CommentHandler.ts` itself stays in the repo — only the route no longer references it.)
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **Step 3: Typecheck**
 
-Run: `cd backend && npx vitest run src/services/messaging/__tests__/CommentHandler.test.ts`
-Expected: PASS, 3 tests.
+Run: `cd backend && npx tsc --noEmit`
+Expected: no errors (no unused-import error since `noUnusedLocals` is not enabled, but removing it is cleaner regardless).
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
-git add backend/src/services/messaging/CommentHandler.ts backend/src/services/messaging/__tests__/CommentHandler.test.ts
-git commit -m "feat: CommentHandler platform-aware with IG private reply and dedup"
+git add backend/src/routes/messagingRoutes.ts
+git commit -m "feat: disable Facebook comment automation (remove webhook trigger)"
 ```
 
 ---
 
-## Task 8: Instagram webhook parser + route wiring
+## Task 8: Instagram DM webhook parser + route wiring
 
 **Files:**
 - Create: `backend/src/services/messaging/webhookParser.ts`
@@ -1030,9 +840,9 @@ git commit -m "feat: CommentHandler platform-aware with IG private reply and ded
 Create `backend/src/services/messaging/__tests__/webhookParser.test.ts`:
 ```ts
 import { describe, it, expect, beforeEach } from 'vitest';
-import { parseInstagramEvents } from '../webhookParser.js';
+import { parseInstagramDms } from '../webhookParser.js';
 
-describe('parseInstagramEvents', () => {
+describe('parseInstagramDms', () => {
   beforeEach(() => {
     process.env.IG_BUSINESS_ACCOUNT_ID = 'IG123';
   });
@@ -1041,16 +851,10 @@ describe('parseInstagramEvents', () => {
     const body = {
       object: 'instagram',
       entry: [
-        {
-          messaging: [
-            { sender: { id: 'IGSID1' }, message: { mid: 'mid1', text: 'hello' } },
-          ],
-        },
+        { messaging: [{ sender: { id: 'IGSID1' }, message: { mid: 'mid1', text: 'hello' } }] },
       ],
     };
-    const result = parseInstagramEvents(body);
-    expect(result.dms).toEqual([{ senderId: 'IGSID1', text: 'hello', mid: 'mid1' }]);
-    expect(result.comments).toEqual([]);
+    expect(parseInstagramDms(body)).toEqual([{ senderId: 'IGSID1', text: 'hello', mid: 'mid1' }]);
   });
 
   it('skips echo and self-sent DMs', () => {
@@ -1065,42 +869,21 @@ describe('parseInstagramEvents', () => {
         },
       ],
     };
-    expect(parseInstagramEvents(body).dms).toEqual([]);
+    expect(parseInstagramDms(body)).toEqual([]);
   });
 
-  it('extracts a comment event', () => {
+  it('ignores comment/changes events', () => {
     const body = {
       object: 'instagram',
       entry: [
         {
           changes: [
-            {
-              field: 'comments',
-              value: { id: 'CMT1', text: 'price?', from: { id: 'U9', username: 'ann' } },
-            },
+            { field: 'comments', value: { id: 'CMT1', text: 'price?', from: { id: 'U9', username: 'ann' } } },
           ],
         },
       ],
     };
-    const result = parseInstagramEvents(body);
-    expect(result.comments).toEqual([{ commentId: 'CMT1', username: 'ann', text: 'price?' }]);
-  });
-
-  it('skips comments from the business account itself', () => {
-    const body = {
-      object: 'instagram',
-      entry: [
-        {
-          changes: [
-            {
-              field: 'comments',
-              value: { id: 'CMT1', text: 'hi', from: { id: 'IG123', username: 'me' } },
-            },
-          ],
-        },
-      ],
-    };
-    expect(parseInstagramEvents(body).comments).toEqual([]);
+    expect(parseInstagramDms(body)).toEqual([]);
   });
 });
 ```
@@ -1120,21 +903,9 @@ export interface IgDmEvent {
   mid?: string;
 }
 
-export interface IgCommentEvent {
-  commentId: string;
-  username: string;
-  text: string;
-}
-
-export interface IgEvents {
-  dms: IgDmEvent[];
-  comments: IgCommentEvent[];
-}
-
-export function parseInstagramEvents(body: any): IgEvents {
+export function parseInstagramDms(body: any): IgDmEvent[] {
   const igId = process.env.IG_BUSINESS_ACCOUNT_ID || '';
   const dms: IgDmEvent[] = [];
-  const comments: IgCommentEvent[] = [];
 
   for (const entry of body.entry || []) {
     for (const messaging of entry.messaging || []) {
@@ -1145,48 +916,36 @@ export function parseInstagramEvents(body: any): IgEvents {
         dms.push({ senderId, text, mid: messaging.message?.mid });
       }
     }
-
-    for (const change of entry.changes || []) {
-      if (change.field !== 'comments') continue;
-      const val = change.value || {};
-      if (val.id && val.text && val.from?.id !== igId) {
-        comments.push({
-          commentId: val.id,
-          username: val.from?.username ?? 'User',
-          text: val.text,
-        });
-      }
-    }
   }
 
-  return { dms, comments };
+  return dms;
 }
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `cd backend && npx vitest run src/services/messaging/__tests__/webhookParser.test.ts`
-Expected: PASS, 4 tests.
+Expected: PASS, 3 tests.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add backend/src/services/messaging/webhookParser.ts backend/src/services/messaging/__tests__/webhookParser.test.ts
-git commit -m "feat: add Instagram webhook event parser"
+git commit -m "feat: add Instagram DM webhook parser"
 ```
 
 ### Part B — wire into the route
 
-- [ ] **Step 6: Import the parser in messagingRoutes**
+- [ ] **Step 6: Import the parser**
 
-In `backend/src/routes/messagingRoutes.ts`, add to the imports block (after the `CommentHandler` import):
+In `backend/src/routes/messagingRoutes.ts`, add to the imports block:
 ```ts
-import { parseInstagramEvents } from '../services/messaging/webhookParser.js';
+import { parseInstagramDms } from '../services/messaging/webhookParser.js';
 ```
 
-- [ ] **Step 7: Add the instagram branch in the POST handler**
+- [ ] **Step 7: Add the instagram branch**
 
-In `backend/src/routes/messagingRoutes.ts`, find the `else` that currently logs unknown object types:
+In `backend/src/routes/messagingRoutes.ts`, find the trailing `else` that logs unknown object types:
 ```ts
     } else {
       console.log('[Webhook] Unknown object type:', body.object);
@@ -1197,29 +956,22 @@ Replace it with:
     } else if (body.object === 'instagram') {
       res.status(200).send('OK');
 
-      const { dms, comments } = parseInstagramEvents(body);
-      console.log(`[Webhook] Instagram: ${dms.length} dm(s), ${comments.length} comment(s)`);
+      const dms = parseInstagramDms(body);
+      console.log(`[Webhook] Instagram: ${dms.length} dm(s)`);
 
       for (const dm of dms) {
         console.log(`[Webhook] IG message from ${dm.senderId}: ${dm.text}`);
         await ConversationOrchestrator.handleIncomingMessage(dm.senderId, dm.text, dm.mid, 'instagram');
-      }
-
-      for (const c of comments) {
-        console.log(`[Webhook] IG comment from ${c.username}: ${c.text.substring(0, 80)}`);
-        await CommentHandler.handleComment(c.commentId, c.username, c.text, 'instagram');
       }
     } else {
       console.log('[Webhook] Unknown object type:', body.object);
     }
 ```
 
-- [ ] **Step 8: Add ConversationOrchestrator import check**
-
-Confirm `ConversationOrchestrator` is already imported in `messagingRoutes.ts` (it is, used by the `page` branch). No change needed — this step is a verification only.
+- [ ] **Step 8: Verify ConversationOrchestrator import present**
 
 Run: `grep -n "ConversationOrchestrator" backend/src/routes/messagingRoutes.ts`
-Expected: import line present.
+Expected: import line present (already used by the `page` branch). No change needed.
 
 - [ ] **Step 9: Typecheck + full suite**
 
@@ -1230,7 +982,7 @@ Expected: typecheck clean; all tests pass.
 
 ```bash
 git add backend/src/routes/messagingRoutes.ts
-git commit -m "feat: handle Instagram webhook events (DM + comment) in route"
+git commit -m "feat: handle Instagram DM webhook events in route"
 ```
 
 ---
@@ -1246,33 +998,27 @@ Append to `backend/.env`:
 ```
 IG_BUSINESS_ACCOUNT_ID=
 ```
-Leave the value blank for the deployer to fill (the Instagram-scoped business account id). `FB_ACCESS_TOKEN` and `FB_VERIFY_TOKEN` are reused — no new token rows.
+Leave the value blank for the deployer (the Instagram-scoped business account id). `FB_ACCESS_TOKEN` + `FB_VERIFY_TOKEN` reused.
 
-- [ ] **Step 2: Document Meta app setup (commit message body)**
+- [ ] **Step 2: Commit**
 
-No code change. Record the manual Meta dashboard steps in the commit message: subscribe the `instagram` product, set webhook fields `messages` + `comments` on the same callback URL, and grant `instagram_manage_messages` + `instagram_manage_comments` permissions.
-
-- [ ] **Step 3: Commit**
-
+First check whether `.env` is tracked: `git check-ignore backend/.env`.
+- If it prints nothing (tracked): commit it.
 ```bash
 git add backend/.env
 git commit -m "chore: add IG_BUSINESS_ACCOUNT_ID env var
 
-Meta app setup (manual): subscribe instagram product, webhook fields
-messages + comments on existing callback URL, grant
-instagram_manage_messages + instagram_manage_comments permissions."
+Meta app setup (manual): subscribe instagram product, webhook field
+messages only (no comments), grant instagram_manage_messages."
 ```
-
-> Note: if `backend/.env` is gitignored, skip the commit and instead add the variable to any committed `.env.example` (run `git check-ignore backend/.env` to confirm). If no example file exists, document the variable in the PR description.
+- If it prints the path (gitignored): skip the commit; add `IG_BUSINESS_ACCOUNT_ID=` to a committed `.env.example` if one exists, otherwise just note the variable in the PR description. Report which path was taken.
 
 ---
 
 ## Final Verification
 
-- [ ] **Run the full suite:** `cd backend && npm test` → all tests pass.
+- [ ] **Full suite:** `cd backend && npm test` → all tests pass.
 - [ ] **Typecheck:** `cd backend && npx tsc --noEmit` → no errors.
 - [ ] **Build:** `cd backend && npm run build` → compiles clean.
-- [ ] **FB regression (manual sanity):** confirm `FacebookAdapter` static call sites were all migrated — `grep -rn "FacebookAdapter\." backend/src --include=*.ts | grep -v "__tests__" | grep -v "FacebookAdapter.ts"` should return nothing except possibly `ChatbotService.ts` (see note below).
-
-> **ChatbotService note:** `ChatbotService` uses `FacebookAdapter.isConfigured()` as a static at two sites (lines ~24 and ~133). These are migrated to the `facebookAdapter` singleton in Task 6 Step 4 — the only call sites outside the messaging module. The grep above should return nothing once that step is done.
-```
+- [ ] **No stray static FacebookAdapter calls:** `grep -rn "FacebookAdapter\.\(send\|get\|set\|reply\|isConfigured\|verify\)" backend/src --include=*.ts | grep -v "__tests__"` → returns nothing (all migrated to the singleton).
+- [ ] **Comment automation off:** confirm `backend/src/routes/messagingRoutes.ts` has no `CommentHandler` reference and no `field === 'feed'` branch.
