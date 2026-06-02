@@ -1,4 +1,4 @@
-import { FacebookAdapter } from '../messaging/FacebookAdapter.js';
+import { facebookAdapter } from '../messaging/FacebookAdapter.js';
 import { WooCommerceService } from '../woocommerceService.js';
 import prisma from '../../config/db.js';
 
@@ -21,7 +21,7 @@ export class ChatbotService {
   }
 
   static isConfigured(): boolean {
-    return !!(this.GEMINI_API_KEY && FacebookAdapter.isConfigured());
+    return !!(this.GEMINI_API_KEY && facebookAdapter.isConfigured());
   }
 
   static async checkUserOrderHistory(phone: string): Promise<ToolResult> {
@@ -130,7 +130,7 @@ export class ChatbotService {
 
   static async processMessage(context: ChatContext, userMessage: string): Promise<string> {
     const geminiKeyConfigured = !!this.GEMINI_API_KEY;
-    const fbConfigured = FacebookAdapter.isConfigured();
+    const fbConfigured = facebookAdapter.isConfigured();
     console.log(`[Chatbot] isConfigured check - Gemini: ${geminiKeyConfigured}, Facebook: ${fbConfigured}`);
 
     if (!this.isConfigured()) {

@@ -1,4 +1,4 @@
-import { FacebookAdapter } from './FacebookAdapter.js';
+import { facebookAdapter } from './FacebookAdapter.js';
 import { ChatbotService } from '../chatbot/ChatbotService.js';
 
 const ZERO_UUID = '00000000-0000-0000-0000-000000000000';
@@ -21,7 +21,7 @@ export class CommentHandler {
         commentText
       );
 
-      await FacebookAdapter.replyToComment(commentId, aiReply);
+      await facebookAdapter.replyToComment(commentId, aiReply);
       console.log(`[CommentHandler] Replied to ${commentId}`);
     } catch (error: any) {
       console.error(`[CommentHandler] Failed to reply to comment ${commentId}:`, error.message);
