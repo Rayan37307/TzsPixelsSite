@@ -24,8 +24,15 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(morgan('dev')); // Detailed HTTP logs
-app.use(cors());
+// Restrict CORS to the configured frontend origin(s) in production.
+// FRONTEND_ORIGIN is a comma-separated list; if unset, allow all (dev).
+// Note: Meta/IG webhooks are server-to-server and unaffected by CORS.
+const allowedOrigins = process.env.FRONTEND_ORIGIN
+  ? process.env.FRONTEND_ORIGIN.split(',').map((o) => o.trim())
+  : undefined;
+
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
+app.use(cors(allowedOrigins ? { origin: allowedOrigins, credentials: true } : {}));
 app.use(express.json());
 app.use(express.static('public'));
 
