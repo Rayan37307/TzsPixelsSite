@@ -12,6 +12,7 @@ import type {
   NormalizedProduct,
   PlaceOrderInput,
   PlaceOrderResult,
+  CancelOrderResult,
   CustomerOrderHistory,
 } from './types.js';
 
@@ -85,6 +86,15 @@ export const shopifyProvider: CommerceProvider = {
     });
 
     return { orderId: String(order.id), orderNumber: String(order.order_number) };
+  },
+
+  async cancelOrder(orderId: string): Promise<CancelOrderResult> {
+    try {
+      await ShopifyService.cancelOrder(orderId);
+      return { success: true, message: `Order #${orderId} cancelled successfully.` };
+    } catch (error: any) {
+      return { success: false, message: error.message };
+    }
   },
 
   async getCustomerOrderHistory(phone: string): Promise<CustomerOrderHistory> {

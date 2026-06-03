@@ -352,6 +352,7 @@ Available Tools:
 * get_product_details: Use this to search or verify product name, price, stock, and details.
 * check_order_history: Use this to check customer delivery success rate using phone number.
 * place_order: Use this to create an order after customer confirmation.
+* cancel_order: Use this to cancel an existing order. Requires the order ID from the customer.
 
 Critical Rules:
 

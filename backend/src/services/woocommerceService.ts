@@ -164,6 +164,17 @@ export class WooCommerceService {
     }
   }
 
+  static async cancelOrder(orderId: string) {
+    const store = this.primaryStore;
+    if (!store) throw new Error('No WooCommerce store configured');
+    const response = await axios.put(
+      `${store.url}/wp-json/wc/v3/orders/${orderId}`,
+      { status: 'cancelled' },
+      this.getAuthConfig(store)
+    );
+    return response.data;
+  }
+
   static async updateOrder(orderId: string, updateData: any) {
     const store = this.primaryStore;
     if (!store) {

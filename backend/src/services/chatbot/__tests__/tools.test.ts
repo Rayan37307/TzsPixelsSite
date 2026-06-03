@@ -27,6 +27,7 @@ function fakeProvider(): CommerceProvider {
     listProducts: vi.fn().mockResolvedValue([{ id: '1', name: 'X', price: '10', inStock: true }]),
     searchProducts: vi.fn().mockResolvedValue([{ id: '1', name: 'X', price: '10', inStock: true }]),
     createOrder: vi.fn().mockResolvedValue({ orderId: '9', orderNumber: '100' }),
+    cancelOrder: vi.fn().mockResolvedValue({ success: true, message: 'Order #9 cancelled successfully.' }),
     getCustomerOrderHistory: vi.fn().mockResolvedValue({ total: 1, delivered: 1, successRate: 100 }),
   };
 }

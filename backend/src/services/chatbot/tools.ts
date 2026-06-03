@@ -94,6 +94,17 @@ export function buildTools(provider: CommerceProvider | null): ToolSet {
         required: ['customerName', 'phone', 'address', 'city', 'email', 'productName', 'quantity'],
       },
     },
+    {
+      name: 'cancel_order',
+      description: 'Cancel an existing order by order ID.',
+      parameters: {
+        type: SchemaType.OBJECT,
+        properties: {
+          orderId: { type: SchemaType.STRING, description: 'The order ID to cancel.' },
+        },
+        required: ['orderId'],
+      },
+    },
   ];
 
   const handlers: Record<string, (args: any) => Promise<any>> = {
@@ -146,6 +157,14 @@ export function buildTools(provider: CommerceProvider | null): ToolSet {
         return { success: true, ...result };
       } catch (error: any) {
         return { success: false, error: error.message };
+      }
+    },
+
+    cancel_order: async (args) => {
+      try {
+        return await provider.cancelOrder(String(args?.orderId ?? ''));
+      } catch (error: any) {
+        return { success: false, message: error.message };
       }
     },
   };

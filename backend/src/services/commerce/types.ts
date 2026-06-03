@@ -28,10 +28,16 @@ export interface CustomerOrderHistory {
   successRate: number; // 0..100
 }
 
+export interface CancelOrderResult {
+  success: boolean;
+  message: string;
+}
+
 export interface CommerceProvider {
   name: 'woocommerce' | 'shopify';
   listProducts(limit?: number): Promise<NormalizedProduct[]>;
   searchProducts(query: string): Promise<NormalizedProduct[]>;
   createOrder(input: PlaceOrderInput): Promise<PlaceOrderResult>;
+  cancelOrder(orderId: string): Promise<CancelOrderResult>;
   getCustomerOrderHistory(phone: string): Promise<CustomerOrderHistory>;
 }
