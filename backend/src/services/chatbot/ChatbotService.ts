@@ -265,8 +265,15 @@ export class ChatbotService {
       const msg = response.choices[0].message;
       messages.push(msg as any);
 
-      if (!msg.tool_calls || msg.tool_calls.length === 0) {
-        const text = msg.content || '';
+      const text = msg.content || '';
+
+      // Llama sometimes emits <function=name>{args}</function> as text instead of tool_calls
+      const embeddedCalls = [...text.matchAll(/<function=([a-z_]+)>([\s\S]*?)<\/function>/g)];
+
+      const hasStructuredCalls = msg.tool_calls && msg.tool_calls.length > 0;
+      const hasEmbeddedCalls = embeddedCalls.length > 0;
+
+      if (!hasStructuredCalls && !hasEmbeddedCalls) {
         if (!text.trim()) {
           console.error('[Chatbot] Empty response from Groq');
           return 'দুঃখিত, আমি এই মুহূর্তে উত্তর দিতে পারছি না।';
@@ -274,22 +281,40 @@ export class ChatbotService {
         return text;
       }
 
-      for (const call of msg.tool_calls) {
-        if (call.type !== 'function') continue;
-        console.log(`[Chatbot] Tool call: ${call.function.name}`, call.function.arguments);
-        const handler = handlers[call.function.name];
+      // Handle structured tool_calls
+      if (hasStructuredCalls) {
+        for (const call of msg.tool_calls!) {
+          if (call.type !== 'function') continue;
+          console.log(`[Chatbot] Tool call: ${call.function.name}`, call.function.arguments);
+          const handler = handlers[call.function.name];
+          let out: any;
+          try {
+            const args = JSON.parse(call.function.arguments);
+            out = handler ? await handler(args) : { success: false, error: `Unknown tool: ${call.function.name}` };
+          } catch {
+            out = { success: false, error: 'Failed to parse tool arguments' };
+          }
+          messages.push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify(out) });
+        }
+        continue;
+      }
+
+      // Handle embedded <function=...> text calls — push as assistant + tool results
+      const cleanText = text.replace(/<function=([a-z_]+)>[\s\S]*?<\/function>/g, '').trim();
+      if (cleanText) messages.push({ role: 'assistant', content: cleanText });
+
+      for (const match of embeddedCalls) {
+        const [, name, argsRaw] = match;
+        console.log(`[Chatbot] Embedded tool call: ${name}`, argsRaw.trim());
+        const handler = handlers[name];
         let out: any;
         try {
-          const args = JSON.parse(call.function.arguments);
-          out = handler ? await handler(args) : { success: false, error: `Unknown tool: ${call.function.name}` };
+          const args = JSON.parse(argsRaw.trim() || '{}');
+          out = handler ? await handler(args) : { success: false, error: `Unknown tool: ${name}` };
         } catch {
           out = { success: false, error: 'Failed to parse tool arguments' };
         }
-        messages.push({
-          role: 'tool',
-          tool_call_id: call.id,
-          content: JSON.stringify(out),
-        });
+        messages.push({ role: 'user', content: `Tool result for ${name}: ${JSON.stringify(out)}` });
       }
     }
 
