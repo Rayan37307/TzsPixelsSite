@@ -1,5 +1,12 @@
 import { ShopifyService } from '../shopifyService.js';
+import { normalizeBdPhone } from '../bdCourierService.js';
 import { historyFromOrders } from './helpers.js';
+
+function toE164(phone: string): string {
+  const local = normalizeBdPhone(phone);
+  if (local) return '+880' + local.slice(1); // 01XXXXXXXXX → +8801XXXXXXXXX
+  return phone; // pass through if not a BD number
+}
 import type {
   CommerceProvider,
   NormalizedProduct,
@@ -55,23 +62,24 @@ export const shopifyProvider: CommerceProvider = {
 
   async createOrder(input: PlaceOrderInput): Promise<PlaceOrderResult> {
     const variantId = await findVariantId(input.productName);
+    const phone = toE164(input.phone);
 
     const order = await ShopifyService.createOrder({
       email: input.email,
-      phone: input.phone,
+      phone,
       line_items: [{ variant_id: variantId, quantity: input.quantity }],
       customer: {
         first_name: input.customerName.split(' ')[0],
         last_name: input.customerName.split(' ').slice(1).join(' ') || '',
         email: input.email,
-        phone: input.phone,
+        phone,
       },
       shipping_address: {
         first_name: input.customerName.split(' ')[0],
         last_name: input.customerName.split(' ').slice(1).join(' ') || '',
         address1: input.address,
         city: input.city,
-        phone: input.phone,
+        phone,
         country: 'BD',
       },
     });

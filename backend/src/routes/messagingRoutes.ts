@@ -14,7 +14,7 @@ router.get('/webhooks/facebook', (req: Request, res: Response) => {
   const token = req.query['hub.verify_token'];
   const challenge = req.query['hub.challenge'];
 
-  const verifyToken = process.env.FB_VERIFY_TOKEN || 'saajba_webhook_verify';
+  const verifyToken = process.env.FB_VERIFY_TOKEN || 'automate';
   
   if (mode === 'subscribe' && token === verifyToken) {
     console.log('[Webhook] Facebook verified');
