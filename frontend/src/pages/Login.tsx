@@ -1,14 +1,31 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import { Card, Button } from '../components/ui/Base';
-import { ShieldCheck, Zap, Lock, Mail } from 'lucide-react';
+import { ShieldCheck, Zap, KeyRound } from 'lucide-react';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
+  const [token, setToken] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate('/');
+    setError('');
+    setLoading(true);
+
+    try {
+      const res = await axios.post(`${API_BASE_URL}/auth/login`, { token });
+      localStorage.setItem('auth_token', res.data.token);
+      navigate('/');
+    } catch {
+      setError('Invalid access token');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -16,64 +33,48 @@ export const Login: React.FC = () => {
       <div className="w-full max-w-lg relative z-10">
         <div className="text-center mb-10">
           <div className="w-16 h-16 rounded-xl bg-card border-2 border-border mx-auto flex items-center justify-center mb-6">
-             <Zap className="w-8 h-8 text-[var(--color-accent)]" />
+            <Zap className="w-8 h-8 text-[var(--color-accent)]" />
           </div>
           <h1 className="text-4xl font-black text-foreground tracking-tight">Sign in</h1>
-          <p className="font-mono text-sm text-muted-foreground mt-2">Enter your credentials</p>
+          <p className="font-mono text-sm text-muted-foreground mt-2">Enter your access token</p>
         </div>
 
         <Card className="p-10 relative">
           <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-2">
               <label className="font-mono text-xs text-muted-foreground flex items-center gap-2">
-                <Mail className="w-3 h-3" /> Email
+                <KeyRound className="w-3 h-3" /> Access Token
               </label>
-              <div className="relative">
-                 <input
-                  type="email"
-                  placeholder="you@example.com"
-                  className="w-full h-12 bg-card border-2 border-border rounded-lg px-4 text-sm text-foreground focus:outline-none focus:border-[var(--color-accent)] transition-all placeholder:text-muted-foreground"
-                  required
-                />
-              </div>
+              <input
+                type="password"
+                placeholder="••••••••••••"
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+                className="w-full h-12 bg-card border-2 border-border rounded-lg px-4 text-sm text-foreground focus:outline-none focus:border-[var(--color-accent)] transition-all placeholder:text-muted-foreground"
+                required
+                autoFocus
+              />
             </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="font-mono text-xs text-muted-foreground flex items-center gap-2">
-                  <Lock className="w-3 h-3" /> Password
-                </label>
-                <a href="#" className="font-mono text-xs text-[var(--color-accent)] hover:underline">Reset</a>
-              </div>
-              <div className="relative">
-                <input
-                  type="password"
-                  placeholder="••••••••••••"
-                  className="w-full h-12 bg-card border-2 border-border rounded-lg px-4 text-sm text-foreground focus:outline-none focus:border-[var(--color-accent)] transition-all placeholder:text-muted-foreground"
-                  required
-                />
-              </div>
-            </div>
+            {error && (
+              <p className="font-mono text-xs text-[var(--color-danger)]">{error}</p>
+            )}
 
-            <Button type="submit" variant="primary" size="lg" className="w-full mt-2 gap-2">
-              Sign in <Zap className="w-4 h-4" />
+            <Button type="submit" variant="primary" size="lg" className="w-full mt-2 gap-2" disabled={loading}>
+              {loading ? 'Verifying...' : 'Sign in'} <Zap className="w-4 h-4" />
             </Button>
           </form>
 
           <div className="mt-8 pt-6 border-t border-border flex items-center justify-center gap-4 font-mono text-xs text-muted-foreground">
-             <div className="flex items-center gap-1.5">
-                <ShieldCheck className="w-3 h-3 text-[var(--color-success)]" /> AES-256
-             </div>
-             <div className="w-px h-4 bg-border" />
-             <div className="flex items-center gap-1.5">
-                <Zap className="w-3 h-3 text-[var(--color-accent)]" /> Low latency
-             </div>
+            <div className="flex items-center gap-1.5">
+              <ShieldCheck className="w-3 h-3 text-[var(--color-success)]" /> AES-256
+            </div>
+            <div className="w-px h-4 bg-border" />
+            <div className="flex items-center gap-1.5">
+              <Zap className="w-3 h-3 text-[var(--color-accent)]" /> Low latency
+            </div>
           </div>
         </Card>
-
-        <p className="text-center font-mono text-xs text-muted-foreground mt-8">
-          No account? <a href="#" className="text-[var(--color-accent)] hover:underline">Request access</a>
-        </p>
       </div>
     </div>
   );

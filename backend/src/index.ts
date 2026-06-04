@@ -14,6 +14,7 @@ import { storeRoutes } from './routes/storeRoutes.js';
 import abandonedRoutes from './routes/abandonedRoutes.js';
 import messagingRoutes from './routes/messagingRoutes.js';
 import { settingsRoutes } from './routes/settingsRoutes.js';
+import authRoutes from './routes/authRoutes.js';
 import { scanNewOrders } from './services/fraudDetectionService.js';
 import { ShopifyService } from './services/shopifyService.js';
 import { initializeMessagingTables } from './services/messaging/conversationDb.js';
@@ -47,6 +48,7 @@ app.use('/api/messenger', messengerRoutes);
 app.use('/api/stores', storeRoutes);
 app.use('/api/shopify', abandonedRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/', authRoutes);
 app.use('/', messagingRoutes);
 
 app.get('/health', (req, res) => {

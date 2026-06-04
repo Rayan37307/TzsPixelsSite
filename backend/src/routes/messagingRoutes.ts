@@ -21,7 +21,8 @@ router.get('/webhooks/facebook', (req: Request, res: Response) => {
     res.status(200).send(challenge);
   } else {
     console.log('[Webhook] Verification failed');
-    res.status(403).send('Verification failed');
+    res.status(403).send('Verification failed');    
+
   }
 });
 

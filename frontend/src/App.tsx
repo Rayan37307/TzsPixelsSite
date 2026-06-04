@@ -15,6 +15,7 @@ import { BotManagement } from './pages/BotManagement';
 import { MessengerConversations } from './pages/MessengerConversations';
 import { Settings } from './pages/Settings';
 import { Login } from './pages/Login';
+import { ProtectedRoute } from './components/ProtectedRoute';
 
 const queryClient = new QueryClient();
 
@@ -24,8 +25,8 @@ const App: React.FC = () => {
       <Router>
         <Routes>
           <Route path="/login" element={<Login />} />
-          
-          <Route element={<DashboardLayout />}>
+
+          <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
             <Route path="/" element={<DashboardHome />} />
             <Route path="/orders" element={<OrderManagement />} />
             <Route path="/stores" element={<StoreIntegration />} />
