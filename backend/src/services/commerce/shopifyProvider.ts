@@ -21,12 +21,14 @@ function normalize(p: any): NormalizedProduct {
   const inStock = (p.variants ?? []).some(
     (v: any) => v.inventory_quantity == null || v.inventory_quantity > 0
   );
+  const storefrontBase = (process.env.SHOPIFY_STOREFRONT_URL || `https://${process.env.SHOPIFY_SHOP || ''}`).replace(/\/$/, '');
   return {
     id: String(p.id),
     name: p.title,
     price: String(variant.price ?? ''),
     inStock,
     description: (p.body_html || '').replace(/<[^>]*>/g, '').trim(),
+    url: p.handle ? `${storefrontBase}/products/${p.handle}` : undefined,
   };
 }
 

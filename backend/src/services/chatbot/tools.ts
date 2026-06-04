@@ -44,7 +44,7 @@ export function buildTools(provider: CommerceProvider | null): ToolSet {
   const declarations: FunctionDeclaration[] = [
     {
       name: 'get_available_products',
-      description: 'List the available products in the store with name, price, and stock status.',
+      description: 'List the available products in the store with name, price, stock status, and product URL.',
       parameters: {
         type: SchemaType.OBJECT,
         properties: {
@@ -57,7 +57,7 @@ export function buildTools(provider: CommerceProvider | null): ToolSet {
     },
     {
       name: 'get_product_details',
-      description: 'Search products by name or keyword and return matching product details (price, stock, description).',
+      description: 'Search products by name or keyword and return matching product details (price, stock, description, and exact product URL).',
       parameters: {
         type: SchemaType.OBJECT,
         properties: {

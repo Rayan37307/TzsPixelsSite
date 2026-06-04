@@ -5,6 +5,7 @@ export interface NormalizedProduct {
   currency?: string;
   inStock: boolean;
   description?: string;
+  url?: string;
 }
 
 export interface PlaceOrderInput {

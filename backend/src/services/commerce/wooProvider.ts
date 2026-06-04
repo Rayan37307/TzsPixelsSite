@@ -16,6 +16,7 @@ function normalize(p: any): NormalizedProduct {
     price: String(p.price ?? ''),
     inStock: p.stock_status === 'instock',
     description: (p.short_description || p.description || '').replace(/<[^>]*>/g, '').trim(),
+    url: p.permalink || undefined,
   };
 }
 
