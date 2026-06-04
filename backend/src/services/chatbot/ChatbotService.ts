@@ -187,7 +187,7 @@ export class ChatbotService {
         tools: tools.length ? tools : undefined,
         tool_choice: tools.length ? 'auto' : undefined,
         temperature: 0.7,
-        max_tokens: 1024,
+        max_completion_tokens: 1024,
       });
 
       const msg = response.choices[0].message;
@@ -259,7 +259,7 @@ export class ChatbotService {
         tools: tools.length ? (tools as any) : undefined,
         tool_choice: tools.length ? 'auto' : undefined,
         temperature: 0.7,
-        max_tokens: 1024,
+        max_completion_tokens: 1024,
       });
 
       const msg = response.choices[0].message;
