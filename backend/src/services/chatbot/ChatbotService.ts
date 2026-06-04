@@ -70,7 +70,7 @@ export class ChatbotService {
     const historyRows = await prisma.message.findMany({
       where: { conversationId: context.conversationId },
       orderBy: { createdAt: 'desc' },
-      take: 7,
+      take: 6,
       select: { sender: true, content: true },
     });
 
