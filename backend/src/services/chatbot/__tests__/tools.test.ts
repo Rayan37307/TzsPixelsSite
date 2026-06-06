@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import axios from 'axios';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 vi.mock('../../bdCourierService.js', () => ({
   isConfigured: vi.fn(() => false),
@@ -14,6 +16,13 @@ vi.mock('../../courierScoring.js', () => ({
 vi.mock('../../notificationService.js', () => ({
   NotificationService: { addNotification: vi.fn() },
 }));
+
+vi.mock('axios');
+
+vi.mock('@google/generative-ai', async (importOriginal) => {
+  const actual = await importOriginal<any>();
+  return { ...actual, GoogleGenerativeAI: vi.fn() };
+});
 
 import { isConfigured, checkCourier } from '../../bdCourierService.js';
 import { deriveCourierRedFlags, riskLevelFromScore } from '../../courierScoring.js';
@@ -40,16 +49,23 @@ beforeEach(() => {
 });
 
 describe('buildTools', () => {
-  it('returns no tools when provider is null', () => {
+  it('returns only the vision tool when provider is null', () => {
     const { declarations, handlers } = buildTools(null);
-    expect(declarations).toEqual([]);
-    expect(Object.keys(handlers)).toEqual([]);
+    expect(declarations.map((d) => d.name)).toEqual(['recognize_product_from_image']);
+    expect(Object.keys(handlers)).toEqual(['recognize_product_from_image']);
   });
 
-  it('exposes 4 tools when provider present', () => {
+  it('exposes 6 tools when provider present', () => {
     const { declarations } = buildTools(fakeProvider());
     expect(declarations.map((d) => d.name).sort()).toEqual(
-      ['check_order_history', 'get_available_products', 'get_product_details', 'place_order'].sort()
+      [
+        'cancel_order',
+        'check_order_history',
+        'get_available_products',
+        'get_product_details',
+        'place_order',
+        'recognize_product_from_image',
+      ].sort()
     );
   });
 
@@ -108,5 +124,74 @@ describe('buildTools', () => {
 
     expect(provider.createOrder).toHaveBeenCalled();
     expect(out.success).toBe(true);
+  });
+});
+
+describe('recognize_product_from_image handler', () => {
+  const mockGenerateContent = vi.fn();
+
+  beforeEach(() => {
+    process.env.GEMINI_API_KEY = 'test-key';
+    (axios.get as any).mockResolvedValue({
+      data: Buffer.from('fake-bytes'),
+      headers: { 'content-type': 'image/jpeg' },
+    });
+    // Must be a regular function (not arrow) — arrow functions aren't constructible,
+    // and `new GoogleGenerativeAI(...)` in production code goes through Reflect.construct.
+    (GoogleGenerativeAI as any).mockImplementation(function (this: any) {
+      this.getGenerativeModel = () => ({ generateContent: mockGenerateContent });
+    });
+    mockGenerateContent.mockResolvedValue({
+      response: { text: () => 'WishCare Vitamin C Serum, 30ml bottle clearly visible' },
+    });
+  });
+
+  it('fetches the image and returns a high-confidence description', async () => {
+    const { handlers } = buildTools(null);
+    const out = await handlers.recognize_product_from_image({ imageUrl: 'https://img/p.jpg' });
+
+    expect(axios.get).toHaveBeenCalledWith('https://img/p.jpg', { responseType: 'arraybuffer', timeout: 10000 });
+    expect(out).toEqual({
+      success: true,
+      description: 'WishCare Vitamin C Serum, 30ml bottle clearly visible',
+      confidence: 'high',
+    });
+  });
+
+  it('marks confidence low when the model flags a blurry or unclear photo', async () => {
+    mockGenerateContent.mockResolvedValue({
+      response: { text: () => 'The photo is blurry and hard to read clearly.' },
+    });
+
+    const { handlers } = buildTools(null);
+    const out = await handlers.recognize_product_from_image({ imageUrl: 'https://img/blurry.jpg' });
+
+    expect(out.success).toBe(true);
+    expect(out.confidence).toBe('low');
+  });
+
+  it('returns an error when GEMINI_API_KEY is not configured', async () => {
+    delete process.env.GEMINI_API_KEY;
+
+    const { handlers } = buildTools(null);
+    const out = await handlers.recognize_product_from_image({ imageUrl: 'https://img/p.jpg' });
+
+    expect(out).toEqual({ success: false, error: 'Image recognition not configured' });
+  });
+
+  it('returns an error when the image fetch fails', async () => {
+    (axios.get as any).mockRejectedValue(new Error('404 not found'));
+
+    const { handlers } = buildTools(null);
+    const out = await handlers.recognize_product_from_image({ imageUrl: 'https://img/missing.jpg' });
+
+    expect(out).toEqual({ success: false, error: '404 not found' });
+  });
+
+  it('returns an error when no imageUrl is provided', async () => {
+    const { handlers } = buildTools(null);
+    const out = await handlers.recognize_product_from_image({});
+
+    expect(out).toEqual({ success: false, error: 'No image URL provided' });
   });
 });
