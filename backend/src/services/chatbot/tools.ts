@@ -1,4 +1,5 @@
-import { SchemaType, type FunctionDeclaration } from '@google/generative-ai';
+import { GoogleGenerativeAI, SchemaType, type FunctionDeclaration } from '@google/generative-ai';
+import axios from 'axios';
 import type { CommerceProvider } from '../commerce/index.js';
 import { isConfigured as bdCourierConfigured, checkCourier, normalizeBdPhone } from '../bdCourierService.js';
 import { deriveCourierRedFlags, riskLevelFromScore } from '../courierScoring.js';
@@ -34,14 +35,75 @@ async function bdCourierNotifyOnly(input: { customerName: string; phone: string 
   }
 }
 
-// Builds the agent's toolset from the active commerce provider. With no
-// provider configured, the commerce tools are absent and the bot is chat-only.
+// Always runs on Gemini Flash — cheapest multimodal option — independent of
+// the active LLM_PROVIDER driving the conversation.
+async function recognizeProductFromImage(imageUrl: string): Promise<
+  { success: true; description: string; confidence: 'high' | 'low' } | { success: false; error: string }
+> {
+  const apiKey = process.env.GEMINI_API_KEY || '';
+  if (!apiKey) return { success: false, error: 'Image recognition not configured' };
+
+  try {
+    const response = await axios.get(imageUrl, { responseType: 'arraybuffer', timeout: 10000 });
+    const base64 = Buffer.from(response.data as ArrayBuffer).toString('base64');
+    const rawType = (response.headers['content-type'] as string) || '';
+    const mimeType = rawType.split(';')[0].trim() || 'image/jpeg';
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const result = await model.generateContent([
+      { inlineData: { data: base64, mimeType } },
+      'This is a photo a customer sent to a skincare/haircare brand called WishCare BD. ' +
+        'Identify the product: name, visible brand/text, product type (serum, shampoo, cream, etc.), ' +
+        'and size if visible. If the image is blurry, a screenshot, or hard to read, say so explicitly ' +
+        'so confidence can be judged. Be concise — a few sentences.',
+    ]);
+
+    const description = result.response.text().trim();
+    const confidence: 'high' | 'low' = /blurry|unclear|screenshot|hard to (read|tell)|not (sure|certain)/i.test(
+      description
+    )
+      ? 'low'
+      : 'high';
+
+    return { success: true, description, confidence };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+const visionDeclaration: FunctionDeclaration = {
+  name: 'recognize_product_from_image',
+  description:
+    'Analyze a product image URL and identify what product it shows (name, brand, type, visible text). Use this whenever the customer sends an image.',
+  parameters: {
+    type: SchemaType.OBJECT,
+    properties: {
+      imageUrl: { type: SchemaType.STRING, description: 'URL of the customer-sent image.' },
+    },
+    required: ['imageUrl'],
+  },
+};
+
+const visionHandlers: Record<string, (args: any) => Promise<any>> = {
+  recognize_product_from_image: async (args) => {
+    const imageUrl = String(args?.imageUrl ?? '');
+    if (!imageUrl) return { success: false, error: 'No image URL provided' };
+    return recognizeProductFromImage(imageUrl);
+  },
+};
+
+// Builds the agent's toolset. The vision tool is always present — recognition
+// needs no catalog access. Commerce tools are added only when a provider is
+// configured; with no provider, the bot can still identify images but can't
+// look products up or place orders.
 export function buildTools(provider: CommerceProvider | null): ToolSet {
   if (!provider) {
-    return { declarations: [], handlers: {} };
+    return { declarations: [visionDeclaration], handlers: { ...visionHandlers } };
   }
 
   const declarations: FunctionDeclaration[] = [
+    visionDeclaration,
     {
       name: 'get_available_products',
       description: 'List the available products in the store with name, price, stock status, and product URL.',
@@ -108,6 +170,8 @@ export function buildTools(provider: CommerceProvider | null): ToolSet {
   ];
 
   const handlers: Record<string, (args: any) => Promise<any>> = {
+    ...visionHandlers,
+
     get_available_products: async (args) => {
       try {
         const products = await provider.listProducts(args?.limit ?? 20);

@@ -1,5 +1,21 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { parseInstagramDms } from '../webhookParser.js';
+import { parseInstagramDms, extractImageUrl } from '../webhookParser.js';
+
+describe('extractImageUrl', () => {
+  it('returns the url of an image attachment', () => {
+    expect(extractImageUrl([{ type: 'image', payload: { url: 'https://img/1.jpg' } }])).toBe(
+      'https://img/1.jpg'
+    );
+  });
+
+  it('ignores non-image attachments', () => {
+    expect(extractImageUrl([{ type: 'audio', payload: { url: 'https://a/1.mp3' } }])).toBeUndefined();
+  });
+
+  it('returns undefined when there are no attachments', () => {
+    expect(extractImageUrl(undefined)).toBeUndefined();
+  });
+});
 
 describe('parseInstagramDms', () => {
   beforeEach(() => {
@@ -14,6 +30,51 @@ describe('parseInstagramDms', () => {
       ],
     };
     expect(parseInstagramDms(body)).toEqual([{ senderId: 'IGSID1', text: 'hello', mid: 'mid1' }]);
+  });
+
+  it('extracts an image attachment alongside caption text', () => {
+    const body = {
+      object: 'instagram',
+      entry: [
+        {
+          messaging: [
+            {
+              sender: { id: 'IGSID1' },
+              message: {
+                mid: 'mid1',
+                text: 'is this in stock?',
+                attachments: [{ type: 'image', payload: { url: 'https://img/p.jpg' } }],
+              },
+            },
+          ],
+        },
+      ],
+    };
+    expect(parseInstagramDms(body)).toEqual([
+      { senderId: 'IGSID1', text: 'is this in stock?', mid: 'mid1', imageUrl: 'https://img/p.jpg' },
+    ]);
+  });
+
+  it('extracts an image-only DM with no caption', () => {
+    const body = {
+      object: 'instagram',
+      entry: [
+        {
+          messaging: [
+            {
+              sender: { id: 'IGSID1' },
+              message: {
+                mid: 'mid2',
+                attachments: [{ type: 'image', payload: { url: 'https://img/q.jpg' } }],
+              },
+            },
+          ],
+        },
+      ],
+    };
+    expect(parseInstagramDms(body)).toEqual([
+      { senderId: 'IGSID1', text: '', mid: 'mid2', imageUrl: 'https://img/q.jpg' },
+    ]);
   });
 
   it('skips echo and self-sent DMs', () => {
