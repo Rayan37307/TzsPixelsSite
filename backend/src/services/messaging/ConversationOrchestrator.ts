@@ -7,11 +7,15 @@ export class ConversationOrchestrator {
     platformUserId: string,
     messageText: string,
     platformMessageId?: string,
-    platform: string = 'facebook'
+    platform: string = 'facebook',
+    imageUrl?: string
   ): Promise<void> {
     console.log(`[Orchestrator] Processing ${platform} message from ${platformUserId}: ${messageText.substring(0, 50)}`);
 
     const adapter = getAdapter(platform);
+    const enrichedText = imageUrl
+      ? `[Customer sent an image: ${imageUrl}]${messageText ? `\n${messageText}` : ''}`
+      : messageText;
 
     try {
       let conversation = await db.getConversationByPlatformUserId(platformUserId, platform);
@@ -38,7 +42,7 @@ export class ConversationOrchestrator {
         sender: 'customer',
         sender_id: platformUserId,
         sender_name: conversation.customerName ?? undefined,
-        content: messageText,
+        content: enrichedText,
         platform_message_id: platformMessageId,
       });
 
@@ -69,7 +73,7 @@ export class ConversationOrchestrator {
           customerName: conversation.customerName ?? 'Customer',
           customerPhone: conversation.customerPhone ?? undefined,
         },
-        messageText
+        enrichedText
       );
 
       console.log(`[Orchestrator] AI response received: "${aiResponse.substring(0, 100)}..."`);
