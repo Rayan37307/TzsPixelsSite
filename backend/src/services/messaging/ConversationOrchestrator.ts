@@ -1,8 +1,29 @@
 import { getAdapter } from './adapterRegistry.js';
+import type { MessagingAdapter } from './MessagingAdapter.js';
 import { ChatbotService } from '../chatbot/ChatbotService.js';
 import * as db from '../messaging/conversationDb.js';
 
+type ConversationRecord = NonNullable<Awaited<ReturnType<typeof db.getConversationByPlatformUserId>>>;
+
+interface BurstPart {
+  text: string;
+  imageUrl?: string;
+}
+
+interface PendingBurst {
+  parts: BurstPart[];
+  timer: NodeJS.Timeout;
+}
+
 export class ConversationOrchestrator {
+  // Messenger/Instagram often deliver an image + caption as two separate
+  // webhook events moments apart (the spec's "Sequential" delivery pattern).
+  // Answering each independently sends the customer two separate — and each
+  // individually incomplete — AI replies. Buffer same-sender messages for a
+  // short window and answer them together as a single turn instead.
+  private static readonly REPLY_DEBOUNCE_MS = 2500;
+  private static pendingBursts = new Map<string, PendingBurst>();
+
   static async handleIncomingMessage(
     platformUserId: string,
     messageText: string,
@@ -55,6 +76,7 @@ export class ConversationOrchestrator {
       const shouldTakeover = takeoverTrigger.some((t) => messageText.toLowerCase().includes(t));
 
       if (shouldTakeover) {
+        this.cancelPendingBurst(platform, platformUserId);
         await db.updateConversation(conversation.id, {
           ai_mode: false,
           status: 'pending_human',
@@ -63,9 +85,61 @@ export class ConversationOrchestrator {
         return;
       }
 
-      await adapter.setTypingIndicator(platformUserId, 'on');
+      await this.bufferForReply(platform, platformUserId, adapter, conversation, { text: messageText, imageUrl });
+    } catch (error: any) {
+      console.error('[Orchestrator] Error:', error.message);
+    }
+  }
 
-      console.log(`[Orchestrator] Calling ChatbotService for message: "${messageText.substring(0, 50)}..."`);
+  // Collects messages arriving within REPLY_DEBOUNCE_MS of each other for the
+  // same sender (resetting the timer on each new arrival), then answers them
+  // together as a single AI turn once the burst goes quiet.
+  private static async bufferForReply(
+    platform: string,
+    platformUserId: string,
+    adapter: MessagingAdapter,
+    conversation: ConversationRecord,
+    part: BurstPart
+  ): Promise<void> {
+    const key = `${platform}:${platformUserId}`;
+    let burst = this.pendingBursts.get(key);
+
+    if (!burst) {
+      burst = { parts: [], timer: null as unknown as NodeJS.Timeout };
+      this.pendingBursts.set(key, burst);
+      await adapter.setTypingIndicator(platformUserId, 'on');
+    }
+
+    burst.parts.push(part);
+    clearTimeout(burst.timer);
+    burst.timer = setTimeout(() => {
+      this.pendingBursts.delete(key);
+      void this.respondToBurst(platformUserId, adapter, conversation, burst!.parts);
+    }, this.REPLY_DEBOUNCE_MS);
+  }
+
+  private static cancelPendingBurst(platform: string, platformUserId: string): void {
+    const key = `${platform}:${platformUserId}`;
+    const burst = this.pendingBursts.get(key);
+    if (burst) {
+      clearTimeout(burst.timer);
+      this.pendingBursts.delete(key);
+    }
+  }
+
+  private static async respondToBurst(
+    platformUserId: string,
+    adapter: MessagingAdapter,
+    conversation: ConversationRecord,
+    parts: BurstPart[]
+  ): Promise<void> {
+    try {
+      const combinedText = parts
+        .map((p) => (p.imageUrl ? `[Customer sent an image: ${p.imageUrl}]${p.text ? `\n${p.text}` : ''}` : p.text))
+        .filter((t) => t.length > 0)
+        .join('\n');
+
+      console.log(`[Orchestrator] Calling ChatbotService for combined message: "${combinedText.substring(0, 50)}..."`);
       const aiResponse = await ChatbotService.processMessage(
         {
           conversationId: conversation.id,
@@ -73,7 +147,7 @@ export class ConversationOrchestrator {
           customerName: conversation.customerName ?? 'Customer',
           customerPhone: conversation.customerPhone ?? undefined,
         },
-        enrichedText
+        combinedText
       );
 
       console.log(`[Orchestrator] AI response received: "${aiResponse.substring(0, 100)}..."`);
