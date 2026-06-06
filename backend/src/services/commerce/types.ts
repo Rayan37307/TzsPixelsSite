@@ -12,8 +12,8 @@ export interface PlaceOrderInput {
   customerName: string;
   phone: string;
   address: string;
-  city: string;
-  email: string;
+  city?: string;
+  email?: string;
   productName: string;
   quantity: number;
 }

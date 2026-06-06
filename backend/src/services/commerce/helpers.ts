@@ -15,3 +15,13 @@ export function historyFromOrders(orders: any[], phone: string): CustomerOrderHi
   const successRate = total > 0 ? Math.round((delivered / total) * 100) : 0;
   return { total, delivered, successRate };
 }
+
+// We never ask customers for email or city (the full address already includes
+// the city). Shopify/WooCommerce still require both fields on order creation,
+// so fall back to placeholders when the chatbot didn't collect them.
+export function dummyEmailFromPhone(phone: string): string {
+  const digits = phone.replace(/\D/g, '');
+  return `customer${digits}@wishcarebd.com`;
+}
+
+export const DUMMY_CITY = 'Dhaka';

@@ -141,7 +141,7 @@ export function buildTools(provider: CommerceProvider | null): ToolSet {
     },
     {
       name: 'place_order',
-      description: 'Place an order for a product. Requires full name, phone, complete delivery address, city, email, product name, and quantity.',
+      description: 'Place an order for a product. Requires full name, phone, complete delivery address, product name, and quantity. City and email are optional — the full address already includes the city, and email is not needed; never ask the customer for either.',
       parameters: {
         type: SchemaType.OBJECT,
         properties: {
@@ -153,7 +153,7 @@ export function buildTools(provider: CommerceProvider | null): ToolSet {
           productName: { type: SchemaType.STRING },
           quantity: { type: SchemaType.NUMBER },
         },
-        required: ['customerName', 'phone', 'address', 'city', 'email', 'productName', 'quantity'],
+        required: ['customerName', 'phone', 'address', 'productName', 'quantity'],
       },
     },
     {
@@ -208,8 +208,8 @@ export function buildTools(provider: CommerceProvider | null): ToolSet {
           customerName: String(args.customerName),
           phone: String(args.phone),
           address: String(args.address),
-          city: String(args.city),
-          email: String(args.email),
+          city: args.city ? String(args.city) : undefined,
+          email: args.email ? String(args.email) : undefined,
           productName: String(args.productName),
           quantity: Number(args.quantity) || 1,
         };

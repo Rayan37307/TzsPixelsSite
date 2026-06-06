@@ -1,5 +1,5 @@
 import { WooCommerceService } from '../woocommerceService.js';
-import { historyFromOrders } from './helpers.js';
+import { historyFromOrders, dummyEmailFromPhone, DUMMY_CITY } from './helpers.js';
 import type {
   CommerceProvider,
   NormalizedProduct,
@@ -43,15 +43,17 @@ export const wooProvider: CommerceProvider = {
 
   async createOrder(input: PlaceOrderInput): Promise<PlaceOrderResult> {
     const productId = await WooCommerceService.findProductId(input.productName);
+    const email = input.email || dummyEmailFromPhone(input.phone);
+    const city = input.city || DUMMY_CITY;
 
     const order = await WooCommerceService.createOrder({
       billing: {
         first_name: input.customerName.split(' ')[0],
         last_name: input.customerName.split(' ').slice(1).join(' ') || '',
-        email: input.email,
+        email,
         phone: input.phone,
         address_1: input.address,
-        city: input.city,
+        city,
         country: 'BD',
       },
       line_items: [{ product_id: productId, quantity: input.quantity }],

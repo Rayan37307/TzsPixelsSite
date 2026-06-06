@@ -1,6 +1,6 @@
 import { ShopifyService } from '../shopifyService.js';
 import { normalizeBdPhone } from '../bdCourierService.js';
-import { historyFromOrders } from './helpers.js';
+import { historyFromOrders, dummyEmailFromPhone, DUMMY_CITY } from './helpers.js';
 
 function toE164(phone: string): string {
   const local = normalizeBdPhone(phone);
@@ -66,22 +66,24 @@ export const shopifyProvider: CommerceProvider = {
   async createOrder(input: PlaceOrderInput): Promise<PlaceOrderResult> {
     const variantId = await findVariantId(input.productName);
     const phone = toE164(input.phone);
+    const email = input.email || dummyEmailFromPhone(input.phone);
+    const city = input.city || DUMMY_CITY;
 
     const order = await ShopifyService.createOrder({
-      email: input.email,
+      email,
       phone,
       line_items: [{ variant_id: variantId, quantity: input.quantity }],
       customer: {
         first_name: input.customerName.split(' ')[0],
         last_name: input.customerName.split(' ').slice(1).join(' ') || '',
-        email: input.email,
+        email,
         phone,
       },
       shipping_address: {
         first_name: input.customerName.split(' ')[0],
         last_name: input.customerName.split(' ').slice(1).join(' ') || '',
         address1: input.address,
-        city: input.city,
+        city,
         phone,
         country: 'BD',
       },
