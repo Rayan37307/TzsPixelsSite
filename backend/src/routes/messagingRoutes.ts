@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import * as db from '../services/messaging/conversationDb.js';
 import prisma from '../config/db.js';
 import { ConversationOrchestrator } from '../services/messaging/ConversationOrchestrator.js';
-import { parseInstagramDms } from '../services/messaging/webhookParser.js';
+import { parseInstagramDms, extractImageUrl } from '../services/messaging/webhookParser.js';
 
 const router = Router();
 
@@ -46,12 +46,13 @@ router.post('/webhooks/facebook', async (req: Request, res: Response) => {
         for (const messaging of entry.messaging || []) {
           console.log('[Webhook] Messaging:', JSON.stringify(messaging).substring(0, 300));
           const senderId = messaging.sender?.id;
-          const messageText = messaging.message?.text;
+          const messageText = messaging.message?.text ?? '';
           const messageId = messaging.message?.mid;
-          
-          if (senderId && messageText) {
+          const imageUrl = extractImageUrl(messaging.message?.attachments);
+
+          if (senderId && (messageText || imageUrl)) {
             console.log(`[Webhook] Message from ${senderId}: ${messageText}`);
-            await ConversationOrchestrator.handleIncomingMessage(senderId, messageText, messageId);
+            await ConversationOrchestrator.handleIncomingMessage(senderId, messageText, messageId, 'facebook', imageUrl);
           }
         }
 
@@ -64,7 +65,7 @@ router.post('/webhooks/facebook', async (req: Request, res: Response) => {
 
       for (const dm of dms) {
         console.log(`[Webhook] IG message from ${dm.senderId}: ${dm.text}`);
-        await ConversationOrchestrator.handleIncomingMessage(dm.senderId, dm.text, dm.mid, 'instagram');
+        await ConversationOrchestrator.handleIncomingMessage(dm.senderId, dm.text, dm.mid, 'instagram', dm.imageUrl);
       }
     } else {
       console.log('[Webhook] Unknown object type:', body.object);
