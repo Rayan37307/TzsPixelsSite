@@ -14,6 +14,30 @@ interface ChatContext {
 }
 
 const MAX_TOOL_HOPS = 5;
+const CUSTOMER_IMAGE_RE = /\[Customer sent an image:\s*(https?:\/\/[^\]\s]+)\]/g;
+
+function extractCustomerImageUrls(message: string): string[] {
+  return [...message.matchAll(CUSTOMER_IMAGE_RE)].map((match) => match[1]);
+}
+
+async function appendImageRecognitionResults(
+  userMessage: string,
+  handlers: Record<string, (args: any) => Promise<any>>
+): Promise<string> {
+  const imageUrls = extractCustomerImageUrls(userMessage);
+  const recognize = handlers.recognize_product_from_image;
+
+  if (imageUrls.length === 0 || !recognize) return userMessage;
+
+  const results = [];
+  for (const imageUrl of imageUrls) {
+    console.log(`[Chatbot] Pre-recognizing customer image: ${imageUrl.substring(0, 120)}`);
+    const out = await recognize({ imageUrl });
+    results.push(`[Image analysis result for ${imageUrl}: ${JSON.stringify(out)}]`);
+  }
+
+  return `${userMessage}\n${results.join('\n')}`;
+}
 
 export class ChatbotService {
   private static get GEMINI_API_KEY() {
@@ -76,16 +100,17 @@ export class ChatbotService {
 
     const provider = getActiveProvider();
     const { declarations, handlers } = buildTools(provider);
+    const enrichedUserMessage = await appendImageRecognitionResults(userMessage, handlers);
     console.log(`[Chatbot] Commerce: ${provider?.name ?? 'none'} | tools: ${declarations.length}`);
 
     try {
       if (this.LLM_PROVIDER === 'openai') {
-        return await this.processWithOpenAI(context, userMessage, historyRows, declarations, handlers);
+        return await this.processWithOpenAI(context, enrichedUserMessage, historyRows, declarations, handlers);
       }
       if (this.LLM_PROVIDER === 'groq') {
-        return await this.processWithGroq(context, userMessage, historyRows, declarations, handlers);
+        return await this.processWithGroq(context, enrichedUserMessage, historyRows, declarations, handlers);
       }
-      return await this.processWithGemini(context, userMessage, historyRows, declarations, handlers);
+      return await this.processWithGemini(context, enrichedUserMessage, historyRows, declarations, handlers);
     } catch (error: any) {
       console.error('[Chatbot] Exception:', error.message);
       console.error('[Chatbot] Stack:', error.stack);
@@ -347,8 +372,9 @@ Main Rules:
 
 Image Recognition:
 
-* When the customer's message contains "[Customer sent an image: <url>]", call recognize_product_from_image with that url FIRST, before responding.
-* Use the recognition result to search the catalog with get_product_details.
+* When the customer's message contains "[Customer sent an image: <url>]" and no matching "[Image analysis result ...]" is present, call recognize_product_from_image with that url FIRST, before responding.
+* When an "[Image analysis result ...]" is present, use it as the already-completed visual reading and do NOT call recognize_product_from_image again for that same image.
+* Use the image analysis result to search the catalog with get_product_details.
 * If no matching product is found, call get_available_products and suggest the closest alternatives from what's actually in stock.
 * Never expose the raw recognition text or mention "image recognition", "AI vision", or tool names to the customer — speak naturally, as if you personally looked at the photo (e.g., "ছবি দেখে মনে হচ্ছে এটা আমাদের ... প্রোডাক্ট").
 * If recognition fails or the photo is too unclear, politely ask the customer to confirm the product name or send a clearer photo.
