@@ -1,11 +1,25 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { parseInstagramDms, extractImageUrl } from '../webhookParser.js';
+import { parseInstagramDms, extractImageUrl, normalizeImageUrl } from '../webhookParser.js';
+
+describe('normalizeImageUrl', () => {
+  it('unescapes HTML-encoded query separators from Meta attachment URLs', () => {
+    expect(normalizeImageUrl('https://scontent.xx.fbcdn.net/p.jpg?oh=abc&amp;oe=123')).toBe(
+      'https://scontent.xx.fbcdn.net/p.jpg?oh=abc&oe=123'
+    );
+  });
+});
 
 describe('extractImageUrl', () => {
   it('returns the url of an image attachment', () => {
     expect(extractImageUrl([{ type: 'image', payload: { url: 'https://img/1.jpg' } }])).toBe(
       'https://img/1.jpg'
     );
+  });
+
+  it('normalizes escaped image attachment URLs', () => {
+    expect(
+      extractImageUrl([{ type: 'image', payload: { url: 'https://img/1.jpg?oh=abc&amp;oe=123' } }])
+    ).toBe('https://img/1.jpg?oh=abc&oe=123');
   });
 
   it('ignores non-image attachments', () => {

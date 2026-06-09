@@ -150,12 +150,27 @@ describe('recognize_product_from_image handler', () => {
     const { handlers } = buildTools(null);
     const out = await handlers.recognize_product_from_image({ imageUrl: 'https://img/p.jpg' });
 
-    expect(axios.get).toHaveBeenCalledWith('https://img/p.jpg', { responseType: 'arraybuffer', timeout: 10000 });
+    expect(axios.get).toHaveBeenCalledWith(
+      'https://img/p.jpg',
+      expect.objectContaining({ responseType: 'arraybuffer', timeout: 10000 })
+    );
     expect(out).toEqual({
       success: true,
       description: 'WishCare Vitamin C Serum, 30ml bottle clearly visible',
       confidence: 'high',
     });
+  });
+
+  it('keeps screenshot/product-page images high confidence when product text is readable', async () => {
+    mockGenerateContent.mockResolvedValue({
+      response: { text: () => 'Screenshot of WishCare Ceramide Body Lotion product page; search query: ceramide body lotion' },
+    });
+
+    const { handlers } = buildTools(null);
+    const out = await handlers.recognize_product_from_image({ imageUrl: 'https://img/screenshot.jpg' });
+
+    expect(out.success).toBe(true);
+    expect(out.confidence).toBe('high');
   });
 
   it('marks confidence low when the model flags a blurry or unclear photo', async () => {
@@ -186,6 +201,31 @@ describe('recognize_product_from_image handler', () => {
     const out = await handlers.recognize_product_from_image({ imageUrl: 'https://img/missing.jpg' });
 
     expect(out).toEqual({ success: false, error: '404 not found' });
+  });
+
+  it('returns an error when a Meta CDN URL is missing signed hash params', async () => {
+    const { handlers } = buildTools(null);
+    const out = await handlers.recognize_product_from_image({
+      imageUrl: 'https://scontent-sea5-1.xx.fbcdn.net/v/t1.15752-9/photo.png?stp=dst-jpg_tt6&_n',
+    });
+
+    expect(axios.get).not.toHaveBeenCalled();
+    expect(out).toEqual({
+      success: false,
+      error: 'Facebook image URL is incomplete or missing its signed hash parameters',
+    });
+  });
+
+  it('returns an error when the image URL returns a non-image response', async () => {
+    (axios.get as any).mockResolvedValue({
+      data: Buffer.from('<html>bad hash</html>'),
+      headers: { 'content-type': 'text/html' },
+    });
+
+    const { handlers } = buildTools(null);
+    const out = await handlers.recognize_product_from_image({ imageUrl: 'https://img/bad.jpg' });
+
+    expect(out).toEqual({ success: false, error: 'Image URL did not return an image (text/html)' });
   });
 
   it('returns an error when no imageUrl is provided', async () => {

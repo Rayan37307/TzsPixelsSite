@@ -10,6 +10,17 @@ export interface ToolSet {
   handlers: Record<string, (args: any) => Promise<any>>;
 }
 
+function isLikelyIncompleteMetaCdnUrl(imageUrl: string): boolean {
+  try {
+    const url = new URL(imageUrl);
+    const host = url.hostname.toLowerCase();
+    if (!host.includes('fbcdn.net')) return false;
+    return !url.searchParams.has('oh') || !url.searchParams.has('oe');
+  } catch {
+    return false;
+  }
+}
+
 // Runs the BDCourier phone check for an order about to be placed. High risk
 // notifies the admin but NEVER blocks — the agent still places the order.
 async function bdCourierNotifyOnly(input: { customerName: string; phone: string }): Promise<void> {
@@ -42,25 +53,43 @@ async function recognizeProductFromImage(imageUrl: string): Promise<
 > {
   const apiKey = process.env.GEMINI_API_KEY || '';
   if (!apiKey) return { success: false, error: 'Image recognition not configured' };
+  if (isLikelyIncompleteMetaCdnUrl(imageUrl)) {
+    return { success: false, error: 'Facebook image URL is incomplete or missing its signed hash parameters' };
+  }
 
   try {
-    const response = await axios.get(imageUrl, { responseType: 'arraybuffer', timeout: 10000 });
-    const base64 = Buffer.from(response.data as ArrayBuffer).toString('base64');
+    const response = await axios.get(imageUrl, {
+      responseType: 'arraybuffer',
+      timeout: 10000,
+      headers: {
+        Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+        'User-Agent':
+          'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36',
+      },
+    });
     const rawType = (response.headers['content-type'] as string) || '';
     const mimeType = rawType.split(';')[0].trim() || 'image/jpeg';
+    if (!mimeType.startsWith('image/')) {
+      return { success: false, error: `Image URL did not return an image (${mimeType || 'unknown content type'})` };
+    }
+
+    const base64 = Buffer.from(response.data as ArrayBuffer).toString('base64');
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     const result = await model.generateContent([
       { inlineData: { data: base64, mimeType } },
       'This is a photo a customer sent to a skincare/haircare brand called WishCare BD. ' +
-        'Identify the product: name, visible brand/text, product type (serum, shampoo, cream, etc.), ' +
-        'and size if visible. If the image is blurry, a screenshot, or hard to read, say so explicitly ' +
-        'so confidence can be judged. Be concise — a few sentences.',
+        'Identify the most likely product. Read visible label text, brand text, product type ' +
+        '(serum, shampoo, cream, lotion, sunscreen, etc.), variant, and size if visible. ' +
+        'A screenshot or product-page image is acceptable; do not mark it unclear just because it is a screenshot. ' +
+        'If the exact product is uncertain but packaging/text gives clues, give the best likely product name and ' +
+        'a short search query that could match the catalog. Only say unclear when no product/label/packaging can be identified. ' +
+        'Be concise and include useful catalog search keywords.',
     ]);
 
     const description = result.response.text().trim();
-    const confidence: 'high' | 'low' = /blurry|unclear|screenshot|hard to (read|tell)|not (sure|certain)/i.test(
+    const confidence: 'high' | 'low' = /blurry|unclear|hard to (read|tell)|cannot identify|no product|not (sure|certain)/i.test(
       description
     )
       ? 'low'

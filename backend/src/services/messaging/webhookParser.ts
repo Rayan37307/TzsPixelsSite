@@ -5,8 +5,16 @@ export interface IgDmEvent {
   imageUrl?: string;
 }
 
+export function normalizeImageUrl(url: unknown): string | undefined {
+  if (typeof url !== 'string') return undefined;
+  const trimmed = url.trim();
+  if (!trimmed) return undefined;
+  return trimmed.replace(/&amp;/g, '&');
+}
+
 export function extractImageUrl(attachments: any[] | undefined): string | undefined {
-  return attachments?.find((a: any) => a?.type === 'image')?.payload?.url;
+  const attachment = attachments?.find((a: any) => a?.type === 'image');
+  return normalizeImageUrl(attachment?.payload?.url);
 }
 
 export function parseInstagramDms(body: any): IgDmEvent[] {
