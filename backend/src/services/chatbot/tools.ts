@@ -21,6 +21,43 @@ function isLikelyIncompleteMetaCdnUrl(imageUrl: string): boolean {
   }
 }
 
+function normalizeImageSource(imageUrl: string): string {
+  return imageUrl.trim().replace(/&amp;/g, '&');
+}
+
+function parseImageDataUri(imageSource: string): { base64: string; mimeType: string } | null {
+  const match = imageSource.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,([a-zA-Z0-9+/=\s]+)$/);
+  if (!match) return null;
+  return { mimeType: match[1], base64: match[2].replace(/\s/g, '') };
+}
+
+function describeImageFetchError(error: any, imageUrl: string): string {
+  const status = error.response?.status;
+  const contentType = error.response?.headers?.['content-type'];
+  const body = Buffer.isBuffer(error.response?.data)
+    ? error.response.data.toString('utf8', 0, Math.min(error.response.data.length, 300))
+    : typeof error.response?.data === 'string'
+      ? error.response.data.slice(0, 300)
+      : '';
+  const isMetaCdn = (() => {
+    try {
+      return new URL(imageUrl).hostname.toLowerCase().includes('fbcdn.net');
+    } catch {
+      return false;
+    }
+  })();
+
+  if (isMetaCdn && /bad (url )?hash|url signature expired|signature/i.test(body)) {
+    return 'Facebook CDN rejected the image URL (bad hash/signature expired). The image link is expired, truncated, or not the original webhook attachment URL.';
+  }
+
+  if (status) {
+    return `Image fetch failed with HTTP ${status}${contentType ? ` (${contentType})` : ''}`;
+  }
+
+  return error.message || 'Image fetch failed';
+}
+
 // Runs the BDCourier phone check for an order about to be placed. High risk
 // notifies the admin but NEVER blocks — the agent still places the order.
 async function bdCourierNotifyOnly(input: { customerName: string; phone: string }): Promise<void> {
@@ -46,37 +83,49 @@ async function bdCourierNotifyOnly(input: { customerName: string; phone: string 
   }
 }
 
-// Always runs on Gemini Flash — cheapest multimodal option — independent of
-// the active LLM_PROVIDER driving the conversation.
+// Always runs on Gemini vision — independent of the active LLM_PROVIDER driving
+// the conversation. Default to Pro because product labels/screenshots need OCR
+// and fine visual detail more than raw speed.
 async function recognizeProductFromImage(imageUrl: string): Promise<
   { success: true; description: string; confidence: 'high' | 'low' } | { success: false; error: string }
 > {
+  imageUrl = normalizeImageSource(imageUrl);
   const apiKey = process.env.GEMINI_API_KEY || '';
+  const visionModel = process.env.VISION_MODEL || 'gemini-2.5-pro';
   if (!apiKey) return { success: false, error: 'Image recognition not configured' };
-  if (isLikelyIncompleteMetaCdnUrl(imageUrl)) {
+  const dataUri = parseImageDataUri(imageUrl);
+  if (!dataUri && isLikelyIncompleteMetaCdnUrl(imageUrl)) {
     return { success: false, error: 'Facebook image URL is incomplete or missing its signed hash parameters' };
   }
 
   try {
-    const response = await axios.get(imageUrl, {
-      responseType: 'arraybuffer',
-      timeout: 10000,
-      headers: {
-        Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-        'User-Agent':
-          'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36',
-      },
-    });
-    const rawType = (response.headers['content-type'] as string) || '';
-    const mimeType = rawType.split(';')[0].trim() || 'image/jpeg';
-    if (!mimeType.startsWith('image/')) {
-      return { success: false, error: `Image URL did not return an image (${mimeType || 'unknown content type'})` };
+    let base64: string;
+    let mimeType: string;
+
+    if (dataUri) {
+      base64 = dataUri.base64;
+      mimeType = dataUri.mimeType;
+    } else {
+      const response = await axios.get(imageUrl, {
+        responseType: 'arraybuffer',
+        timeout: 10000,
+        headers: {
+          Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+          'User-Agent':
+            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36',
+        },
+      });
+      const rawType = (response.headers['content-type'] as string) || '';
+      mimeType = rawType.split(';')[0].trim() || 'image/jpeg';
+      if (!mimeType.startsWith('image/')) {
+        return { success: false, error: `Image URL did not return an image (${mimeType || 'unknown content type'})` };
+      }
+
+      base64 = Buffer.from(response.data as ArrayBuffer).toString('base64');
     }
 
-    const base64 = Buffer.from(response.data as ArrayBuffer).toString('base64');
-
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const model = genAI.getGenerativeModel({ model: visionModel });
     const result = await model.generateContent([
       { inlineData: { data: base64, mimeType } },
       'This is a photo a customer sent to a skincare/haircare brand called WishCare BD. ' +
@@ -97,7 +146,7 @@ async function recognizeProductFromImage(imageUrl: string): Promise<
 
     return { success: true, description, confidence };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: describeImageFetchError(error, imageUrl) };
   }
 }
 

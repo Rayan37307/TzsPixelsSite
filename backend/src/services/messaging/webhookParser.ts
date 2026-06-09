@@ -12,6 +12,16 @@ export function normalizeImageUrl(url: unknown): string | undefined {
   return trimmed.replace(/&amp;/g, '&');
 }
 
+export function describeImageUrlForLog(imageUrl: string | undefined): string {
+  if (!imageUrl) return 'none';
+  try {
+    const url = new URL(imageUrl);
+    return `${url.hostname} length=${imageUrl.length} has_oh=${url.searchParams.has('oh')} has_oe=${url.searchParams.has('oe')}`;
+  } catch {
+    return `invalid length=${imageUrl.length}`;
+  }
+}
+
 export function extractImageUrl(attachments: any[] | undefined): string | undefined {
   const attachment = attachments?.find((a: any) => a?.type === 'image');
   return normalizeImageUrl(attachment?.payload?.url);

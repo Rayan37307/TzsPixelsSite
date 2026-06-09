@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import axios from 'axios';
 
 vi.mock('../adapterRegistry.js', () => ({
   getAdapter: vi.fn(),
@@ -17,6 +18,8 @@ vi.mock('../../chatbot/ChatbotService.js', () => ({
     processMessage: vi.fn(),
   },
 }));
+
+vi.mock('axios');
 
 import { getAdapter } from '../adapterRegistry.js';
 import * as db from '../conversationDb.js';
@@ -51,6 +54,10 @@ beforeEach(() => {
   (db.getConversationByPlatformUserId as any).mockResolvedValue(conversation);
   (db.addMessage as any).mockResolvedValue({});
   (ChatbotService.processMessage as any).mockResolvedValue('AI reply');
+  (axios.get as any).mockResolvedValue({
+    data: Buffer.from('fresh-image'),
+    headers: { 'content-type': 'image/png' },
+  });
 });
 
 afterEach(() => {
@@ -66,10 +73,23 @@ describe('ConversationOrchestrator.handleIncomingMessage — burst buffering', (
 
     expect(ChatbotService.processMessage).toHaveBeenCalledTimes(1);
     expect((ChatbotService.processMessage as any).mock.calls[0][1]).toBe(
-      'is this in stock?\n[Customer sent an image: https://img/p.jpg]'
+      'is this in stock?\n[Customer sent an image: data:image/png;base64,ZnJlc2gtaW1hZ2U=]'
     );
     expect(adapter.sendTextMessage).toHaveBeenCalledTimes(1);
     expect(adapter.sendTextMessage).toHaveBeenCalledWith('PSID1', 'AI reply');
+  });
+
+  it('falls back to the original image URL when immediate image download fails', async () => {
+    (axios.get as any).mockRejectedValueOnce(new Error('bad hash'));
+
+    await ConversationOrchestrator.handleIncomingMessage('PSID1', '', 'mid-img', 'facebook', 'https://img/p.jpg');
+
+    await vi.advanceTimersByTimeAsync(2500);
+
+    expect(ChatbotService.processMessage).toHaveBeenCalledTimes(1);
+    expect((ChatbotService.processMessage as any).mock.calls[0][1]).toBe(
+      '[Customer sent an image: https://img/p.jpg]'
+    );
   });
 
   it('answers a single message once the burst window passes with no follow-up', async () => {

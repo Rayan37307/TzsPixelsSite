@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { getAdapter } from './adapterRegistry.js';
 import type { MessagingAdapter } from './MessagingAdapter.js';
 import { ChatbotService } from '../chatbot/ChatbotService.js';
@@ -8,6 +9,7 @@ type ConversationRecord = NonNullable<Awaited<ReturnType<typeof db.getConversati
 interface BurstPart {
   text: string;
   imageUrl?: string;
+  imageDataUri?: string;
 }
 
 interface PendingBurst {
@@ -24,6 +26,34 @@ export class ConversationOrchestrator {
   private static readonly REPLY_DEBOUNCE_MS = 2500;
   private static pendingBursts = new Map<string, PendingBurst>();
 
+  private static async imageUrlToDataUri(imageUrl: string): Promise<string | undefined> {
+    try {
+      const response = await axios.get(imageUrl, {
+        responseType: 'arraybuffer',
+        timeout: 10000,
+        headers: {
+          Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+          'User-Agent':
+            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36',
+        },
+      });
+      const rawType = (response.headers['content-type'] as string) || '';
+      const contentType = rawType.split(';')[0].trim() || 'image/jpeg';
+      if (!contentType.startsWith('image/')) {
+        console.warn(`[Orchestrator] Image predownload skipped: non-image content-type ${contentType}`);
+        return undefined;
+      }
+
+      const base64 = Buffer.from(response.data as ArrayBuffer).toString('base64');
+      console.log(`[Orchestrator] Predownloaded image for vision (${contentType}, ${base64.length} base64 chars)`);
+      return `data:${contentType};base64,${base64}`;
+    } catch (error: any) {
+      const status = error.response?.status;
+      console.warn(`[Orchestrator] Image predownload failed${status ? ` HTTP ${status}` : ''}: ${error.message}`);
+      return undefined;
+    }
+  }
+
   static async handleIncomingMessage(
     platformUserId: string,
     messageText: string,
@@ -37,6 +67,7 @@ export class ConversationOrchestrator {
     const enrichedText = imageUrl
       ? `[Customer sent an image: ${imageUrl}]${messageText ? `\n${messageText}` : ''}`
       : messageText;
+    const imageDataUri = imageUrl ? await this.imageUrlToDataUri(imageUrl) : undefined;
 
     try {
       let conversation = await db.getConversationByPlatformUserId(platformUserId, platform);
@@ -85,7 +116,7 @@ export class ConversationOrchestrator {
         return;
       }
 
-      await this.bufferForReply(platform, platformUserId, adapter, conversation, { text: messageText, imageUrl });
+      await this.bufferForReply(platform, platformUserId, adapter, conversation, { text: messageText, imageUrl, imageDataUri });
     } catch (error: any) {
       console.error('[Orchestrator] Error:', error.message);
     }
@@ -135,7 +166,10 @@ export class ConversationOrchestrator {
   ): Promise<void> {
     try {
       const combinedText = parts
-        .map((p) => (p.imageUrl ? `[Customer sent an image: ${p.imageUrl}]${p.text ? `\n${p.text}` : ''}` : p.text))
+        .map((p) => {
+          const imageSource = p.imageDataUri ?? p.imageUrl;
+          return imageSource ? `[Customer sent an image: ${imageSource}]${p.text ? `\n${p.text}` : ''}` : p.text;
+        })
         .filter((t) => t.length > 0)
         .join('\n');
 

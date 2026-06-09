@@ -54,4 +54,21 @@ describe('ChatbotService image recognition pre-pass', () => {
       '[Image analysis result for https://img/p.jpg: {"success":true,"description":"WishCare AHA BHA Body Lotion, 200ml","confidence":"high"}]'
     );
   });
+
+  it('recognizes predownloaded image data without exposing base64 in the analysis label', async () => {
+    const processWithGemini = vi
+      .spyOn(ChatbotService as any, 'processWithGemini')
+      .mockResolvedValue('reply');
+
+    await ChatbotService.processMessage(
+      { conversationId: 'conv-1', platformUserId: 'user-1', customerName: 'Customer' },
+      '[Customer sent an image: data:image/png;base64,ZmFrZS1ieXRlcw==]\nis this available?'
+    );
+
+    expect(recognizeProduct).toHaveBeenCalledWith({ imageUrl: 'data:image/png;base64,ZmFrZS1ieXRlcw==' });
+    expect(processWithGemini.mock.calls[0][1]).toContain('[Image analysis result for uploaded image data:');
+    expect(processWithGemini.mock.calls[0][1]).not.toContain(
+      '[Image analysis result for data:image/png;base64,ZmFrZS1ieXRlcw==:'
+    );
+  });
 });

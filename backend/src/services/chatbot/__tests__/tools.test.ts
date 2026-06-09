@@ -173,6 +173,23 @@ describe('recognize_product_from_image handler', () => {
     expect(out.confidence).toBe('high');
   });
 
+  it('accepts a base64 data URI without fetching the image URL', async () => {
+    const { handlers } = buildTools(null);
+    const out = await handlers.recognize_product_from_image({
+      imageUrl: 'data:image/png;base64,ZmFrZS1ieXRlcw==',
+    });
+
+    expect(axios.get).not.toHaveBeenCalled();
+    expect(mockGenerateContent).toHaveBeenCalledWith(
+      expect.arrayContaining([{ inlineData: { data: 'ZmFrZS1ieXRlcw==', mimeType: 'image/png' } }])
+    );
+    expect(out).toEqual({
+      success: true,
+      description: 'WishCare Vitamin C Serum, 30ml bottle clearly visible',
+      confidence: 'high',
+    });
+  });
+
   it('marks confidence low when the model flags a blurry or unclear photo', async () => {
     mockGenerateContent.mockResolvedValue({
       response: { text: () => 'The photo is blurry and hard to read clearly.' },
@@ -201,6 +218,27 @@ describe('recognize_product_from_image handler', () => {
     const out = await handlers.recognize_product_from_image({ imageUrl: 'https://img/missing.jpg' });
 
     expect(out).toEqual({ success: false, error: '404 not found' });
+  });
+
+  it('returns a clear error when Facebook CDN responds with bad hash', async () => {
+    (axios.get as any).mockRejectedValue({
+      response: {
+        status: 403,
+        headers: { 'content-type': 'text/html' },
+        data: Buffer.from('<html><body>Bad URL hash</body></html>'),
+      },
+    });
+
+    const { handlers } = buildTools(null);
+    const out = await handlers.recognize_product_from_image({
+      imageUrl: 'https://scontent-sea5-1.xx.fbcdn.net/v/t1.15752-9/photo.png?oh=abc&oe=123',
+    });
+
+    expect(out).toEqual({
+      success: false,
+      error:
+        'Facebook CDN rejected the image URL (bad hash/signature expired). The image link is expired, truncated, or not the original webhook attachment URL.',
+    });
   });
 
   it('returns an error when a Meta CDN URL is missing signed hash params', async () => {

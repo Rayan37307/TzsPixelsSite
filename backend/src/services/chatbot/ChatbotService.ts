@@ -14,10 +14,14 @@ interface ChatContext {
 }
 
 const MAX_TOOL_HOPS = 5;
-const CUSTOMER_IMAGE_RE = /\[Customer sent an image:\s*(https?:\/\/[^\]\s]+)\]/g;
+const CUSTOMER_IMAGE_RE = /\[Customer sent an image:\s*([^\]\s]+)\]/g;
 
 function extractCustomerImageUrls(message: string): string[] {
   return [...message.matchAll(CUSTOMER_IMAGE_RE)].map((match) => match[1]);
+}
+
+function describeImageSourceForPrompt(imageSource: string): string {
+  return imageSource.startsWith('data:image/') ? 'uploaded image data' : imageSource;
 }
 
 async function appendImageRecognitionResults(
@@ -31,9 +35,9 @@ async function appendImageRecognitionResults(
 
   const results = [];
   for (const imageUrl of imageUrls) {
-    console.log(`[Chatbot] Pre-recognizing customer image: ${imageUrl.substring(0, 120)}`);
+    console.log(`[Chatbot] Pre-recognizing customer image: ${describeImageSourceForPrompt(imageUrl).substring(0, 120)}`);
     const out = await recognize({ imageUrl });
-    results.push(`[Image analysis result for ${imageUrl}: ${JSON.stringify(out)}]`);
+    results.push(`[Image analysis result for ${describeImageSourceForPrompt(imageUrl)}: ${JSON.stringify(out)}]`);
   }
 
   return `${userMessage}\n${results.join('\n')}`;
@@ -372,7 +376,7 @@ Main Rules:
 
 Image Recognition:
 
-* When the customer's message contains "[Customer sent an image: <url>]" and no matching "[Image analysis result ...]" is present, call recognize_product_from_image with that url FIRST, before responding.
+* When the customer's message contains "[Customer sent an image: <url or image data>]" and no matching "[Image analysis result ...]" is present, call recognize_product_from_image with that image source FIRST, before responding.
 * When an "[Image analysis result ...]" is present, use it as the already-completed visual reading and do NOT call recognize_product_from_image again for that same image.
 * If image analysis success=true and the description contains any possible product name, visible text, type, or search keywords, call get_product_details with those best keywords even when confidence is low.
 * If no matching product is found, call get_available_products and suggest the closest alternatives from what's actually in stock.
