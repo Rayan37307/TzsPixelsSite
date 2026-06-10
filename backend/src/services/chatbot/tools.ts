@@ -10,12 +10,10 @@ export interface ToolSet {
   handlers: Record<string, (args: any) => Promise<any>>;
 }
 
-function isLikelyIncompleteMetaCdnUrl(imageUrl: string): boolean {
+function isMetaCdnUrl(imageUrl: string): boolean {
   try {
     const url = new URL(imageUrl);
-    const host = url.hostname.toLowerCase();
-    if (!host.includes('fbcdn.net')) return false;
-    return !url.searchParams.has('oh') || !url.searchParams.has('oe');
+    return url.hostname.toLowerCase().includes('fbcdn.net');
   } catch {
     return false;
   }
@@ -58,6 +56,48 @@ function describeImageFetchError(error: any, imageUrl: string): string {
   return error.message || 'Image fetch failed';
 }
 
+async function downloadImage(imageUrl: string): Promise<{ base64: string; mimeType: string }> {
+  const requestConfig = {
+    responseType: 'arraybuffer' as const,
+    timeout: 15000,
+    maxRedirects: 5,
+    headers: {
+      Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+      'User-Agent':
+        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36',
+    },
+  };
+
+  try {
+    const response = await axios.get(imageUrl, requestConfig);
+    return imageResponseToBase64(response);
+  } catch (error: any) {
+    const accessToken = process.env.FB_ACCESS_TOKEN || process.env.PAGE_ACCESS_TOKEN || '';
+    const shouldRetryWithToken = isMetaCdnUrl(imageUrl) && accessToken && [401, 403].includes(error.response?.status);
+    if (!shouldRetryWithToken) throw error;
+
+    console.warn('[Chatbot] Retrying Facebook image download with page access token');
+    const response = await axios.get(imageUrl, {
+      ...requestConfig,
+      params: { access_token: accessToken },
+    });
+    return imageResponseToBase64(response);
+  }
+}
+
+function imageResponseToBase64(response: { data: any; headers: Record<string, any> }): { base64: string; mimeType: string } {
+  const rawType = (response.headers['content-type'] as string) || '';
+  const mimeType = rawType.split(';')[0].trim() || 'image/jpeg';
+  if (!mimeType.startsWith('image/')) {
+    throw new Error(`Image URL did not return an image (${mimeType || 'unknown content type'})`);
+  }
+
+  return {
+    base64: Buffer.from(response.data as ArrayBuffer).toString('base64'),
+    mimeType,
+  };
+}
+
 // Runs the BDCourier phone check for an order about to be placed. High risk
 // notifies the admin but NEVER blocks — the agent still places the order.
 async function bdCourierNotifyOnly(input: { customerName: string; phone: string }): Promise<void> {
@@ -94,9 +134,6 @@ async function recognizeProductFromImage(imageUrl: string): Promise<
   const visionModel = process.env.VISION_MODEL || 'gemini-2.5-pro';
   if (!apiKey) return { success: false, error: 'Image recognition not configured' };
   const dataUri = parseImageDataUri(imageUrl);
-  if (!dataUri && isLikelyIncompleteMetaCdnUrl(imageUrl)) {
-    return { success: false, error: 'Facebook image URL is incomplete or missing its signed hash parameters' };
-  }
 
   try {
     let base64: string;
@@ -106,22 +143,7 @@ async function recognizeProductFromImage(imageUrl: string): Promise<
       base64 = dataUri.base64;
       mimeType = dataUri.mimeType;
     } else {
-      const response = await axios.get(imageUrl, {
-        responseType: 'arraybuffer',
-        timeout: 10000,
-        headers: {
-          Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-          'User-Agent':
-            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36',
-        },
-      });
-      const rawType = (response.headers['content-type'] as string) || '';
-      mimeType = rawType.split(';')[0].trim() || 'image/jpeg';
-      if (!mimeType.startsWith('image/')) {
-        return { success: false, error: `Image URL did not return an image (${mimeType || 'unknown content type'})` };
-      }
-
-      base64 = Buffer.from(response.data as ArrayBuffer).toString('base64');
+      ({ base64, mimeType } = await downloadImage(imageUrl));
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);

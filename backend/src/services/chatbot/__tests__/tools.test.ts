@@ -132,6 +132,8 @@ describe('recognize_product_from_image handler', () => {
 
   beforeEach(() => {
     process.env.GEMINI_API_KEY = 'test-key';
+    delete process.env.FB_ACCESS_TOKEN;
+    delete process.env.PAGE_ACCESS_TOKEN;
     (axios.get as any).mockResolvedValue({
       data: Buffer.from('fake-bytes'),
       headers: { 'content-type': 'image/jpeg' },
@@ -152,7 +154,7 @@ describe('recognize_product_from_image handler', () => {
 
     expect(axios.get).toHaveBeenCalledWith(
       'https://img/p.jpg',
-      expect.objectContaining({ responseType: 'arraybuffer', timeout: 10000 })
+      expect.objectContaining({ responseType: 'arraybuffer', timeout: 15000, maxRedirects: 5 })
     );
     expect(out).toEqual({
       success: true,
@@ -241,17 +243,45 @@ describe('recognize_product_from_image handler', () => {
     });
   });
 
-  it('returns an error when a Meta CDN URL is missing signed hash params', async () => {
+  it('retries Facebook CDN downloads with the page access token on 403', async () => {
+    process.env.FB_ACCESS_TOKEN = 'page-token';
+    (axios.get as any)
+      .mockRejectedValueOnce({
+        response: {
+          status: 403,
+          headers: { 'content-type': 'text/html' },
+          data: Buffer.from('<html>Forbidden</html>'),
+        },
+      })
+      .mockResolvedValueOnce({
+        data: Buffer.from('token-image'),
+        headers: { 'content-type': 'image/jpeg' },
+      });
+
+    const { handlers } = buildTools(null);
+    const out = await handlers.recognize_product_from_image({
+      imageUrl: 'https://scontent-sea5-1.xx.fbcdn.net/v/t1.15752-9/photo.png?oh=abc&oe=123',
+    });
+
+    expect(axios.get).toHaveBeenCalledTimes(2);
+    expect(axios.get).toHaveBeenLastCalledWith(
+      'https://scontent-sea5-1.xx.fbcdn.net/v/t1.15752-9/photo.png?oh=abc&oe=123',
+      expect.objectContaining({ params: { access_token: 'page-token' } })
+    );
+    expect(out.success).toBe(true);
+  });
+
+  it('still attempts to download a Meta CDN URL even when signed params are missing', async () => {
     const { handlers } = buildTools(null);
     const out = await handlers.recognize_product_from_image({
       imageUrl: 'https://scontent-sea5-1.xx.fbcdn.net/v/t1.15752-9/photo.png?stp=dst-jpg_tt6&_n',
     });
 
-    expect(axios.get).not.toHaveBeenCalled();
-    expect(out).toEqual({
-      success: false,
-      error: 'Facebook image URL is incomplete or missing its signed hash parameters',
-    });
+    expect(axios.get).toHaveBeenCalledWith(
+      'https://scontent-sea5-1.xx.fbcdn.net/v/t1.15752-9/photo.png?stp=dst-jpg_tt6&_n',
+      expect.objectContaining({ responseType: 'arraybuffer', timeout: 15000, maxRedirects: 5 })
+    );
+    expect(out.success).toBe(true);
   });
 
   it('returns an error when the image URL returns a non-image response', async () => {

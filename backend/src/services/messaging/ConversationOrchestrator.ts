@@ -27,16 +27,19 @@ export class ConversationOrchestrator {
   private static pendingBursts = new Map<string, PendingBurst>();
 
   private static async imageUrlToDataUri(imageUrl: string): Promise<string | undefined> {
+    const requestConfig = {
+      responseType: 'arraybuffer' as const,
+      timeout: 15000,
+      maxRedirects: 5,
+      headers: {
+        Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+        'User-Agent':
+          'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36',
+      },
+    };
+
     try {
-      const response = await axios.get(imageUrl, {
-        responseType: 'arraybuffer',
-        timeout: 10000,
-        headers: {
-          Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-          'User-Agent':
-            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36',
-        },
-      });
+      const response = await axios.get(imageUrl, requestConfig);
       const rawType = (response.headers['content-type'] as string) || '';
       const contentType = rawType.split(';')[0].trim() || 'image/jpeg';
       if (!contentType.startsWith('image/')) {
@@ -48,6 +51,32 @@ export class ConversationOrchestrator {
       console.log(`[Orchestrator] Predownloaded image for vision (${contentType}, ${base64.length} base64 chars)`);
       return `data:${contentType};base64,${base64}`;
     } catch (error: any) {
+      const accessToken = process.env.FB_ACCESS_TOKEN || process.env.PAGE_ACCESS_TOKEN || '';
+      const shouldRetryWithToken =
+        imageUrl.includes('fbcdn.net') && accessToken && [401, 403].includes(error.response?.status);
+      if (shouldRetryWithToken) {
+        try {
+          console.warn('[Orchestrator] Retrying Facebook image predownload with page access token');
+          const response = await axios.get(imageUrl, {
+            ...requestConfig,
+            params: { access_token: accessToken },
+          });
+          const rawType = (response.headers['content-type'] as string) || '';
+          const contentType = rawType.split(';')[0].trim() || 'image/jpeg';
+          if (!contentType.startsWith('image/')) {
+            console.warn(`[Orchestrator] Image predownload retry skipped: non-image content-type ${contentType}`);
+            return undefined;
+          }
+
+          const base64 = Buffer.from(response.data as ArrayBuffer).toString('base64');
+          console.log(`[Orchestrator] Predownloaded image with token for vision (${contentType}, ${base64.length} base64 chars)`);
+          return `data:${contentType};base64,${base64}`;
+        } catch (retryError: any) {
+          const retryStatus = retryError.response?.status;
+          console.warn(`[Orchestrator] Image predownload token retry failed${retryStatus ? ` HTTP ${retryStatus}` : ''}: ${retryError.message}`);
+        }
+      }
+
       const status = error.response?.status;
       console.warn(`[Orchestrator] Image predownload failed${status ? ` HTTP ${status}` : ''}: ${error.message}`);
       return undefined;
