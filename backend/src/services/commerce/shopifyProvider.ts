@@ -32,6 +32,42 @@ function normalize(p: any): NormalizedProduct {
   };
 }
 
+const STOP_WORDS = new Set([
+  'wishcare',
+  'bd',
+  'the',
+  'and',
+  'with',
+  'for',
+  'product',
+  'search',
+  'query',
+  'concentrate',
+]);
+
+function tokens(input: string): string[] {
+  return input
+    .toLowerCase()
+    .replace(/<[^>]*>/g, ' ')
+    .split(/[^a-z0-9%]+/)
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 3 && !STOP_WORDS.has(t));
+}
+
+function productSearchScore(product: any, queryTokens: string[]): number {
+  const title = String(product.title ?? '').toLowerCase();
+  const body = String(product.body_html ?? '').replace(/<[^>]*>/g, ' ').toLowerCase();
+  const haystack = `${title} ${body}`;
+  let score = 0;
+
+  for (const token of queryTokens) {
+    if (title.includes(token)) score += 3;
+    else if (haystack.includes(token)) score += 1;
+  }
+
+  return score;
+}
+
 async function findVariantId(productName: string): Promise<number> {
   const products = await ShopifyService.getProducts();
   const q = productName.toLowerCase();
@@ -53,6 +89,16 @@ export const shopifyProvider: CommerceProvider = {
   async searchProducts(query: string): Promise<NormalizedProduct[]> {
     const products = await ShopifyService.getProducts();
     const q = query.toLowerCase();
+    const queryTokens = tokens(query);
+    if (queryTokens.length > 0) {
+      return products
+        .map((product: any) => ({ product, score: productSearchScore(product, queryTokens) }))
+        .filter(({ score }: any) => score >= 3)
+        .sort((a: any, b: any) => b.score - a.score)
+        .slice(0, 5)
+        .map(({ product }: any) => normalize(product));
+    }
+
     return products
       .filter(
         (p: any) =>

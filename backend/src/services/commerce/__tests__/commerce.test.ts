@@ -114,6 +114,19 @@ describe('shopifyProvider', () => {
     expect(products[1].inStock).toBe(false);
   });
 
+  it('searchProducts matches long vision/OCR queries by useful tokens', async () => {
+    (ShopifyService.getProducts as any).mockResolvedValue([
+      { id: 10, title: 'WishCare Hair Growth Serum', body_html: 'Redensyl Anagain Baicapil', variants: [{ id: 100, price: '1200', inventory_quantity: 5 }] },
+      { id: 11, title: 'WishCare 2% Salicylic Acid Face Wash', body_html: 'Face cleanser', variants: [{ id: 110, price: '650', inventory_quantity: 5 }] },
+    ]);
+
+    const products = await shopifyProvider.searchProducts(
+      'WishCare Hair Growth Serum Concentrate Redensyl Anagain Baicapil'
+    );
+
+    expect(products.map((p) => p.name)).toEqual(['WishCare Hair Growth Serum']);
+  });
+
   it('createOrder resolves variant_id', async () => {
     (ShopifyService.getProducts as any).mockResolvedValue([
       { id: 10, title: 'Cream', variants: [{ id: 100, price: '300' }] },
