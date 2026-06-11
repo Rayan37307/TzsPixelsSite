@@ -9,7 +9,7 @@ export class AIService {
   static async chat(message: string, history: { role: string, parts: { text: string }[] }[] = [], systemInstruction?: string) {
     try {
       const model = genAI.getGenerativeModel({ 
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash-lite",
         systemInstruction: systemInstruction ? { role: 'system', parts: [{ text: systemInstruction }] } : undefined
       });
       
