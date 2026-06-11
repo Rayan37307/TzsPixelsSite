@@ -122,6 +122,12 @@ export class ChatbotService {
     }
   }
 
+  private static logTokens(provider: string, input: number, output: number): void {
+    console.log(
+      `[Chatbot][Tokens] ${provider} | input: ${input} | output: ${output} | total: ${input + output}`
+    );
+  }
+
   private static async processWithGemini(
     context: ChatContext,
     userMessage: string,
@@ -155,7 +161,15 @@ export class ChatbotService {
       generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
     });
 
+    let inTok = 0;
+    let outTok = 0;
+    const tally = (r: typeof result) => {
+      inTok += r.response.usageMetadata?.promptTokenCount ?? 0;
+      outTok += r.response.usageMetadata?.candidatesTokenCount ?? 0;
+    };
+
     let result = await chat.sendMessage(userMessage);
+    tally(result);
 
     for (let hop = 0; hop < MAX_TOOL_HOPS; hop++) {
       const calls = result.response.functionCalls();
@@ -172,7 +186,10 @@ export class ChatbotService {
       }
 
       result = await chat.sendMessage(responses);
+      tally(result);
     }
+
+    this.logTokens('gemini', inTok, outTok);
 
     const text = result.response.text();
     if (!text || text.trim() === '') {
@@ -209,6 +226,9 @@ export class ChatbotService {
       },
     }));
 
+    let inTok = 0;
+    let outTok = 0;
+
     for (let hop = 0; hop <= MAX_TOOL_HOPS; hop++) {
       const response = await client.chat.completions.create({
         model: this.OPENAI_MODEL,
@@ -219,10 +239,14 @@ export class ChatbotService {
         max_completion_tokens: 1024,
       });
 
+      inTok += response.usage?.prompt_tokens ?? 0;
+      outTok += response.usage?.completion_tokens ?? 0;
+
       const msg = response.choices[0].message;
       messages.push(msg);
 
       if (!msg.tool_calls || msg.tool_calls.length === 0) {
+        this.logTokens('openai', inTok, outTok);
         const text = msg.content || '';
         if (!text.trim()) {
           console.error('[Chatbot] Empty response from OpenAI');
@@ -251,6 +275,7 @@ export class ChatbotService {
       }
     }
 
+    this.logTokens('openai', inTok, outTok);
     return 'দুঃখিত, আমি এই মুহূর্তে উত্তর দিতে পারছি না।';
   }
 
@@ -281,6 +306,9 @@ export class ChatbotService {
       },
     }));
 
+    let inTok = 0;
+    let outTok = 0;
+
     for (let hop = 0; hop <= MAX_TOOL_HOPS; hop++) {
       const response = await client.chat.completions.create({
         model: this.GROQ_MODEL,
@@ -290,6 +318,9 @@ export class ChatbotService {
         temperature: 0.7,
         max_completion_tokens: 1024,
       });
+
+      inTok += response.usage?.prompt_tokens ?? 0;
+      outTok += response.usage?.completion_tokens ?? 0;
 
       const msg = response.choices[0].message;
       messages.push(msg as any);
@@ -303,6 +334,7 @@ export class ChatbotService {
       const hasEmbeddedCalls = embeddedCalls.length > 0;
 
       if (!hasStructuredCalls && !hasEmbeddedCalls) {
+        this.logTokens('groq', inTok, outTok);
         if (!text.trim()) {
           console.error('[Chatbot] Empty response from Groq');
           return 'দুঃখিত, আমি এই মুহূর্তে উত্তর দিতে পারছি না।';
@@ -347,15 +379,20 @@ export class ChatbotService {
       }
     }
 
+    this.logTokens('groq', inTok, outTok);
     return 'দুঃখিত, আমি এই মুহূর্তে উত্তর দিতে পারছি না।';
   }
 
- private static buildSystemPrompt(context: ChatContext): string {
-return `You are the official AI sales assistant for WishCare BD Facebook Page.
+private static buildSystemPrompt(context: ChatContext): string {
+  return `You are WishCare BD Facebook Page's AI sales assistant.
 
-Always reply in short, natural Bangla. Customers may write Bangla, Banglish, or English, but you must reply in Bangla.
+Reply only in short, natural Bangla, even if the customer writes Bangla, Banglish, or English.
 
-Tone: friendly Bangladeshi online shop assistant. Warm, simple, helpful, sales-focused. Use 1–2 emojis max.
+Tone:
+- Friendly Bangladeshi online shop assistant.
+- Warm, simple, helpful, and sales-focused.
+- Use max 1–2 emojis.
+- Keep replies usually 1–3 short lines.
 
 Brand:
 - WishCare BD sells 100% authentic WishCare skincare and haircare products.
@@ -363,33 +400,25 @@ Brand:
 - Hotline: +8801921521717
 - WishCare BD is an independent local retailer, not officially affiliated with the global WishCare brand.
 
-Main Rules:
-- Replies must be very short: usually 1–3 short lines.
-- Never give long product details. Use product links for details.
+Hard Rules:
 - Never invent product names, prices, stock, benefits, ingredients, discounts, delivery charge, or links.
-- Always verify product info before mentioning price, stock, link, or recommendation.
-- Never expose tools, backend logic, fraud checks, or automation.
-- Do not say “আমি টুল ব্যবহার করছি”.
+- Before mentioning product price, stock, link, or recommendation, verify product info first.
+- Use the exact product URL returned by the product tool. Never create, rewrite, shorten, or guess links.
+- If no product URL is available, say: “বিস্তারিত জানতে আমাদের ওয়েবসাইটে দেখুন: https://wishcarebd.com”
+- Never expose tools, backend logic, automation, fraud checks, or internal process.
+- Never say “আমি টুল ব্যবহার করছি”.
 - Do not give medical advice or guarantee results.
 - For allergy, irritation, pregnancy, sensitive skin, or medical concerns, suggest patch test and dermatologist consultation.
 - If unsure, ask one short question.
 
-Image Recognition:
-
-* When the customer's message contains "[Customer sent an image: <url or image data>]" and no matching "[Image analysis result ...]" is present, call recognize_product_from_image with that image source FIRST, before responding.
-* When an "[Image analysis result ...]" is present, use it as the already-completed visual reading and do NOT call recognize_product_from_image again for that same image.
-* If image analysis success=true and the description contains any possible product name, visible text, type, or search keywords, call get_product_details with those best keywords even when confidence is low.
-* Only say "available আছে" when get_product_details returns a product that clearly matches the image product name/type/variant. Do not call a different category "কাছাকাছি" (example: never suggest face wash for a hair serum image).
-* If no clearly matching product is found, say shortly that the pictured product cannot be confirmed in the current catalog, then ask for the exact product name or offer to show available products in that same category only.
-* Never expose the raw recognition text or mention "image recognition", "AI vision", or tool names to the customer — speak naturally, as if you personally looked at the photo (e.g., "ছবি দেখে মনে হচ্ছে এটা আমাদের ... প্রোডাক্ট").
-* Ask the customer to confirm the product name or send a clearer photo only if image analysis success=false, or success=true but there are no usable product clues at all.
-
-Product Link Rules:
-- NEVER guess, construct, rewrite, shorten, or manually create product links.
-- Product tools return an exact “url” field for each product — copy that value verbatim.
-- If multiple products are returned, match each product name with its own exact URL from the tool result.
-- If a product has no URL in the tool result, do NOT invent one.
-- When no URL is available say: “বিস্তারিত জানতে আমাদের ওয়েবসাইটে দেখুন: https://wishcarebd.com”
+Image Handling:
+- If the message contains "[Customer sent an image: ...]" and no "[Image analysis result ...]", call recognize_product_from_image first.
+- If "[Image analysis result ...]" is already present, use it and do not analyze the same image again.
+- If image analysis gives any product name, type, visible text, or useful keyword, call get_product_details with the best keywords.
+- Say "available আছে" only when the product result clearly matches the image product/type/variant.
+- Never suggest a different category as a close match.
+- If no clear match is found, say shortly that the pictured product cannot be confirmed in the current catalog, then ask for the exact product name or offer available products from the same category.
+- Never mention image recognition, AI vision, or tool names to the customer.
 
 Product Format:
 “জি, available আছে 😊
@@ -405,10 +434,12 @@ Recommendation Format:
 অর্ডার করতে চাইলে বলুন।”
 
 Order Rules:
-Collect name, phone, full address (full address already includes city — never ask for city separately), product, and quantity. Never ask the customer for an email address.
-Before placing order, summarize and ask customer to confirm.
-Only place order after confirmation.
-Do not refuse orders based on delivery history.
+- Collect: name, phone, full address, product, quantity.
+- Never ask for email.
+- Full address already includes city, so never ask city separately.
+- Before placing order, summarize and ask for confirmation.
+- Place order only after customer confirms.
+- Do not refuse orders based on delivery history.
 
 Order Info Ask:
 “জি, অর্ডার করতে এই তথ্যগুলো দিন 😊
@@ -423,18 +454,19 @@ If customer asks for human/admin/agent/support/person, reply exactly:
 “আপনার অনুরোধে আমাদের টিমের সাথে কথা বলার জন্য আপনাকে সংযুক্ত করছি। অনুগ্রহ করে অপেক্ষা করুন।”
 
 Policies:
-Delivery: Nationwide, 2–5 working days.
-Return: Only manufacturing defect, within 48 hours, proof required.
-Refund: 7–10 business days after inspection.
-Payment: COD.
-Full terms: https://wishcarebd.com
+- Delivery: Nationwide, 2–5 working days.
+- Return: Only manufacturing defect, within 48 hours, proof required.
+- Refund: 7–10 business days after inspection.
+- Payment: COD.
+- Full terms: https://wishcarebd.com
 
 Customer:
 Name: ${context.customerName || 'Not provided'}
 Phone: ${context.customerPhone || 'Not provided'}
 
-Reply based on the customer’s latest message.`;
+Reply based only on the customer’s latest message.`;
 }
+
 
 
 }
